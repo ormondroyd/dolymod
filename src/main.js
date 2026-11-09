@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { ELEMENTS, KINDS, KIND } from './kit.js';
 import { toSmiles, lookUp } from './naming.js';
+import { EXAMPLES } from './examples.js';
 
 const $ = id => document.getElementById(id);
 const X = new THREE.Vector3(1, 0, 0);
@@ -199,16 +200,16 @@ function closeRings(atom) {
 // another hole on each, as with the real kit: two links make a double bond,
 // three a triple.
 function link(a, b) {
+  if (linksBetween(a, b).length === 3) return flash('Those atoms already have three links');
+  if (!freeHoles(a).length || !freeHoles(b).length) return flash('Both atoms need a free hole');
+  change(() => addLink(a, b));
+}
+
+function addLink(a, b) {
   const already = linksBetween(a, b).length;
-  if (already === 3) return flash('Those atoms already have three links');
   const toB = posOf(b).sub(posOf(a)).normalize();
-  const ha = nearestHole(a, freeHoles(a), toB);
-  const hb = nearestHole(b, freeHoles(b), toB.clone().negate());
-  if (ha === null || hb === null) return flash('Both atoms need a free hole');
-  change(() => {
-    addBond(a, ha, b, hb);
-    if (already) settle(a, b);
-  });
+  addBond(a, nearestHole(a, freeHoles(a), toB), b, nearestHole(b, freeHoles(b), toB.clone().negate()));
+  if (already) settle(a, b);
 }
 
 // When two atoms share two or three links, turn the lighter side of the
@@ -242,7 +243,12 @@ function settle(a, b) {
     atom.q = turn.clone().multiply(quatOf(atom)).toArray();
   }
 
-  // Pair the holes up again so no two links cross.
+  pairUp(fixed, moving);
+}
+
+// Re-pair the holes of two atoms joined by several links so no two cross.
+function pairUp(fixed, moving) {
+  const links = linksBetween(fixed, moving);
   const spare = links.map(l => holeAt(l, moving));
   for (const l of links) {
     const facing = holeDir(fixed, holeAt(l, fixed));
@@ -253,19 +259,206 @@ function settle(a, b) {
   }
 }
 
-function fillHydrogens() {
-  const filled = change(() => {
-    for (const atom of [...model.atoms]) {
-      if (kindOf(atom).el === 'H' || kindOf(atom).crystal) continue;
-      for (const h of freeHoles(atom)) {
-        const spot = placement(atom, h, 'H');
-        if (!spot.blocked) addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
-      }
+function fillHoles() {
+  for (const atom of [...model.atoms]) {
+    if (kindOf(atom).el === 'H' || kindOf(atom).crystal) continue;
+    for (const h of freeHoles(atom)) {
+      const spot = placement(atom, h, 'H');
+      if (!spot.blocked) addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
     }
-  });
-  if (filled) return;
+  }
+}
+
+function fillHydrogens() {
+  if (change(fillHoles)) return;
   const salty = model.atoms.some(a => kindOf(a).crystal && freeHoles(a).length);
   flash(salty ? "Salt crystal atoms don't take hydrogen" : 'No free holes to fill');
+}
+
+// ---- Saving -----------------------------------------------------------------
+// The model is kept in this browser as you build, so a refresh brings it back.
+// Save downloads it as a file and Open loads one, for keeping or sharing.
+
+const STORE = 'dolymod-model';
+let saveTimer;
+
+function autosave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORE, JSON.stringify(model));
+    } catch {
+      // Storage can be full or switched off; the model just won't come back.
+    }
+  }, 300);
+}
+
+// A model from storage or a file, checked before it is trusted; null if not.
+function readModel(data) {
+  const saved = data?.model ?? data;
+  if (!Array.isArray(saved?.atoms) || !Array.isArray(saved?.bonds)) return null;
+  const atoms = new Map();
+  for (const a of saved.atoms) {
+    if (!KIND[a?.kind] || a.p?.length !== 3 || a.q?.length !== 4 || ![...a.p, ...a.q].every(Number.isFinite)) return null;
+    atoms.set(a.id, a);
+  }
+  const used = new Set();
+  for (const b of saved.bonds) {
+    for (const [id, hole] of [[b?.a, b?.ha], [b?.b, b?.hb]]) {
+      const atom = atoms.get(id);
+      if (!atom || !(hole in KIND[atom.kind].holes) || used.has(`${id}:${hole}`)) return null;
+      used.add(`${id}:${hole}`);
+    }
+  }
+  const ids = [...atoms.keys(), ...saved.bonds.map(b => b.id)];
+  return {
+    atoms: saved.atoms.map(({ id, kind, p, q }) => ({ id, kind, p, q })),
+    bonds: saved.bonds.map(({ id, a, ha, b, hb }) => ({ id, a, ha, b, hb })),
+    nextId: Math.max(0, ...ids) + 1,
+  };
+}
+
+function saveFile() {
+  if (!model.atoms.length) return flash('Build something first');
+  const named = !$('name').classList.contains('status') && $('name').textContent;
+  const slug = (named || 'molecule').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'molecule';
+  const file = new Blob([JSON.stringify({ app: 'dolymod', version: 1, model })], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(file);
+  link.download = `${slug}.dolymod.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  flash(`Saved ${link.download}`);
+}
+
+async function openFile(file) {
+  let opened = null;
+  try {
+    opened = readModel(JSON.parse(await file.text()));
+  } catch {
+    // Not JSON: handled below.
+  }
+  if (!opened) return flash("That file isn't a Dolymod model");
+  change(() => { model = opened; });
+  fitView();
+}
+
+// ---- Examples ---------------------------------------------------------------
+
+function loadExample(example) {
+  change(() => {
+    model = { atoms: [], bonds: [], nextId: model.nextId };
+    if (example.tree) {
+      grow(example.tree, null);
+      fillHoles();
+    } else {
+      assemble(example.build(bondLength));
+    }
+  });
+  fitView();
+}
+
+// Build a tree from examples.js: each child goes into its parent's next free
+// hole, with extra links for "=" (double) and "#" (triple).
+function grow(node, parent) {
+  const [head, ...children] = Array.isArray(node) ? node : [node];
+  const links = { '=': 2, '#': 3 }[head[0]] ?? 1;
+  const kindId = links > 1 ? head.slice(1) : head;
+  let atom;
+  if (!parent) {
+    atom = addAtom(kindId, new THREE.Vector3(), new THREE.Quaternion());
+  } else {
+    const hole = freeHoles(parent)[0];
+    const spot = placement(parent, hole, kindId);
+    atom = addAtom(kindId, spot.p, spot.q);
+    addBond(parent, hole, atom, 0);
+    for (let k = 1; k < links; k++) addLink(parent, atom);
+  }
+  children.forEach(child => grow(child, atom));
+}
+
+// Put generated atoms in place, turn each so its holes face its links, and
+// plug every link into the holes it was matched with.
+function assemble({ atoms, links }) {
+  const ends = atoms.map(() => []);
+  links.forEach(([i, j], n) => {
+    const dir = atoms[j].p.clone().sub(atoms[i].p).normalize();
+    ends[i].push({ n, dir });
+    ends[j].push({ n, dir: dir.clone().negate() });
+  });
+  const holeFor = new Map();
+  const made = atoms.map(({ kind, p }, i) => {
+    const { q, holes } = orient(KIND[kind], ends[i].map(e => e.dir));
+    ends[i].forEach((e, k) => holeFor.set(`${e.n}:${i}`, holes[k]));
+    return addAtom(kind, p, q);
+  });
+  links.forEach(([i, j], n) => addBond(made[i], holeFor.get(`${n}:${i}`), made[j], holeFor.get(`${n}:${j}`)));
+  const seen = new Set();
+  for (const [i, j] of links) {
+    if (seen.has(`${i}-${j}`)) pairUp(made[i], made[j]);
+    seen.add(`${i}-${j}`);
+  }
+}
+
+// The turn that points a ball's holes along `dirs` as closely as it can, and
+// which hole serves each direction. Tries each way of matching directions to
+// holes (at most 720, for six holes) unless the ball already fits unturned.
+function orient(kind, dirs) {
+  const unturned = dirs.map(d => kind.holes.findIndex(h => h.dot(d) > 0.999));
+  if (!unturned.includes(-1) && new Set(unturned).size === dirs.length) {
+    return { q: new THREE.Quaternion(), holes: unturned };
+  }
+  let best = { q: new THREE.Quaternion(), holes: [], error: Infinity };
+  for (const holes of matchings(kind.holes.length, dirs.length)) {
+    const from = holes.map(h => kind.holes[h]);
+    for (const q of bestTurns(from, dirs)) {
+      const error = from.reduce((sum, h, k) => sum + 1 - h.clone().applyQuaternion(q).dot(dirs[k]), 0);
+      if (error < best.error - 1e-9) best = { q, holes, error };
+    }
+  }
+  return best;
+}
+
+function* matchings(holes, wanted, used = []) {
+  if (used.length === wanted) {
+    yield [...used];
+    return;
+  }
+  for (let h = 0; h < holes; h++) {
+    if (used.includes(h)) continue;
+    used.push(h);
+    yield* matchings(holes, wanted, used);
+    used.pop();
+  }
+}
+
+// Horn's method: the rotation taking each `from` vector closest to its `to`
+// vector is the top eigenvector of a 4 x 4 matrix, found here by power
+// iteration. Returns it and its inverse; the caller keeps whichever fits.
+function bestTurns(from, to) {
+  if (!from.length) return [new THREE.Quaternion()];
+  const S = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  from.forEach((h, k) => {
+    const a = h.toArray();
+    const b = to[k].toArray();
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) S[r][c] += a[r] * b[c];
+  });
+  const [[xx, xy, xz], [yx, yy, yz], [zx, zy, zz]] = S;
+  const N = [
+    [xx + yy + zz, yz - zy, zx - xz, xy - yx],
+    [yz - zy, xx - yy - zz, xy + yx, zx + xz],
+    [zx - xz, xy + yx, -xx + yy - zz, yz + zy],
+    [xy - yx, zx + xz, yz + zy, -xx - yy + zz],
+  ];
+  const shift = from.length + 1;
+  let v = [1, 0.3, 0.2, 0.1];
+  for (let step = 0; step < 200; step++) {
+    const next = N.map((row, r) => row.reduce((sum, x, c) => sum + x * v[c], 0) + shift * v[r]);
+    const size = Math.hypot(...next);
+    v = next.map(x => x / size);
+  }
+  const q = new THREE.Quaternion(v[1], v[2], v[3], v[0]).normalize();
+  return [q, q.clone().invert()];
 }
 
 // ---- Rendering --------------------------------------------------------------
@@ -414,6 +607,7 @@ function rebuild() {
   refreshReadout();
   refreshHint();
   if (lastPointer) hover(lastPointer);
+  autosave();
 }
 
 let ghostDisposables = [];
@@ -856,10 +1050,14 @@ function refreshReadout() {
     counts.Na /= g;
     counts.Cl /= g;
     order = ['Na', 'Cl'];
-  } else {
+  } else if (counts.C) {
     // Hill order: carbon, then hydrogen, then the rest alphabetically.
-    const rest = Object.keys(counts).filter(el => !(counts.C && (el === 'C' || el === 'H'))).sort();
-    order = counts.C ? ['C', ...(counts.H ? ['H'] : []), ...rest] : rest;
+    const rest = Object.keys(counts).filter(el => el !== 'C' && el !== 'H').sort();
+    order = ['C', ...(counts.H ? ['H'] : []), ...rest];
+  } else {
+    // Without carbon, IUPAC's element sequence gives the familiar NH3, H2O, HCl.
+    const sequence = ['Na', 'B', 'Si', 'P', 'N', 'H', 'S', 'I', 'Br', 'Cl', 'O', 'F'];
+    order = Object.keys(counts).sort((x, y) => sequence.indexOf(x) - sequence.indexOf(y));
   }
   $('formula').innerHTML = order.length
     ? order.map(el => el + (counts[el] > 1 ? `<sub>${counts[el]}</sub>` : '')).join('')
@@ -1047,9 +1245,33 @@ document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click'
 $('fill').addEventListener('click', fillHydrogens);
 $('undo').addEventListener('click', undo);
 $('fit').addEventListener('click', fitView);
+
+for (const group of new Set(EXAMPLES.map(x => x.group))) {
+  const options = document.createElement('optgroup');
+  options.label = group;
+  EXAMPLES.forEach((x, i) => { if (x.group === group) options.append(new Option(x.name, i)); });
+  $('examples').append(options);
+}
+$('examples').addEventListener('change', e => {
+  loadExample(EXAMPLES[e.target.value]);
+  e.target.selectedIndex = 0;
+});
 $('zoom-in').addEventListener('click', () => zoomBy(0.8));
 $('zoom-out').addEventListener('click', () => zoomBy(1.25));
 $('clear').addEventListener('click', () => change(() => { model = { atoms: [], bonds: [], nextId: model.nextId }; }));
 
+$('save').addEventListener('click', saveFile);
+$('open').addEventListener('click', () => $('open-file').click());
+$('open-file').addEventListener('change', e => {
+  if (e.target.files[0]) openFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+try {
+  model = readModel(JSON.parse(localStorage.getItem(STORE))) ?? model;
+} catch {
+  // Nothing saved, or storage switched off: start with an empty table.
+}
 setTool('add');
 rebuild();
+fitView();

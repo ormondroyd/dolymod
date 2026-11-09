@@ -33,6 +33,11 @@ work, because browsers block ES modules on `file://`.)
 - **Delete**: click an atom or a link. Deleting an atom also removes the hydrogens on it;
   deleting one link of a double bond leaves a single bond.
 - **Fill with H** puts a hydrogen in every free hole.
+- **Examples**: load a ready-made model: water, oxygen, carbon dioxide, ammonia,
+  methane, ethanol, ethene, vinegar (acetic acid), a benzene ring, a salt crystal or a
+  buckyball (C₆₀). Undo takes you back to what you had.
+- **Saving**: your model is kept in the browser as you build, so it comes back after a
+  refresh. **Save** downloads it as a `.dolymod.json` file and **Open** loads one.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
   so this needs an internet connection. Cis/trans and mirror-image forms aren't told
@@ -71,6 +76,8 @@ and a triple bond is three. The atoms turn so the links bend evenly side by side
 - `src/kit.js`: element colours and sizes, and the hole directions for each atom.
 - `src/main.js`: the model, the placement rules, rendering and interaction.
 - `src/naming.js`: the SMILES writer and PubChem lookup.
+- `src/examples.js`: the Examples menu: small molecules as build steps, and generated
+  shapes (benzene, the salt crystal, the buckyball).
 
 Uses [three.js](https://threejs.org) 0.160 from a CDN.
 

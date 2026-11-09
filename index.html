@@ -28,6 +28,12 @@
       <button data-tool="delete">Delete</button>
     </nav>
     <div class="actions">
+      <select id="examples" aria-label="Load an example">
+        <option value="" disabled selected>Examples…</option>
+      </select>
+      <button id="open" title="Open a saved model file">Open</button>
+      <button id="save" title="Download this model as a file">Save</button>
+      <input id="open-file" type="file" accept=".json,application/json" hidden>
       <button id="fill" title="Put a hydrogen in every free hole">Fill with H</button>
       <button id="undo" title="Undo (Ctrl/⌘ Z)" disabled>Undo</button>
       <button id="fit">Fit view</button>
