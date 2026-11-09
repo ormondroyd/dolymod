@@ -26,12 +26,14 @@ work, because browsers block ES modules on `file://`.)
 - **Turn and twist**: drag an atom to turn the whole piece it belongs to. Drag a bond to
   twist one side of the molecule around it, for staggered and eclipsed forms (bonds in
   a ring can't twist). Drag empty space to turn the view.
-- **Link**: click two atoms to join them with a flexible link. Use it to close strained
-  rings such as cyclopropane. Rings that fit exactly, such as benzene or chair
-  cyclohexane, close on their own when the last atom goes in.
+- **Link**: drag from one atom to another (or click both) to join them with a flexible
+  link. Use it to close strained rings such as cyclopropane. Join the same two atoms
+  again to make the bond double, then triple. Rings that fit exactly, such as benzene
+  or chair cyclohexane, close on their own when the last atom goes in.
 - **Bond order**: click a bond to cycle single, double, triple.
 - **Delete**: click an atom or a bond. Deleting an atom also removes the hydrogens on it.
-- **Fill with H** puts a hydrogen in every free hole.
+- **Fill with H** puts hydrogens in the free holes, up to each atom's usual valence. A
+  double bond uses one hole, so a 4-hole carbon in a double bond keeps one hole spare.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
   so this needs an internet connection. If an atom has the wrong number of bonds (a

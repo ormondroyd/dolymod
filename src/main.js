@@ -184,8 +184,14 @@ function closeRings(atom) {
   }
 }
 
+// Join two atoms. Joining them again adds a link, as with the real kit:
+// a second makes a double bond, a third a triple.
 function link(a, b) {
-  if (bonded(a.id, b.id)) return flash('Those atoms are already joined');
+  const existing = model.bonds.find(bd => (bd.a === a.id && bd.b === b.id) || (bd.a === b.id && bd.b === a.id));
+  if (existing) {
+    if (existing.order === 3) return flash('That is already a triple bond');
+    return change(() => { existing.order += 1; });
+  }
   const toB = posOf(b).sub(posOf(a)).normalize();
   const ha = nearestHole(a, freeHoles(a), toB);
   const hb = nearestHole(b, freeHoles(b), toB.clone().negate());
@@ -193,17 +199,32 @@ function link(a, b) {
   change(() => addBond(a, ha, b, hb));
 }
 
+// How many more bonds an atom wants to reach its usual valence. A double bond
+// takes one hole here, so a double-bonded 4-hole carbon keeps a spare hole.
+function bondsWanted(atom) {
+  const sum = bondsOf(atom.id).reduce((n, b) => n + b.order, 0);
+  const valence = ELEMENTS[kindOf(atom).el].valence;
+  return (valence.find(v => v >= sum) ?? sum) - sum;
+}
+
+// Holes still waiting for an atom: free holes, up to what valence wants.
+const openHoles = atom => Math.min(freeHoles(atom).length, bondsWanted(atom));
+
 function fillHydrogens() {
   const filled = change(() => {
     for (const atom of [...model.atoms]) {
       if (kindOf(atom).el === 'H') continue;
+      let wanted = bondsWanted(atom);
       for (const h of freeHoles(atom)) {
+        if (wanted <= 0) break;
         const spot = placement(atom, h, 'H');
-        if (!spot.blocked) addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
+        if (spot.blocked) continue;
+        addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
+        wanted--;
       }
     }
   });
-  if (!filled) flash('No free holes to fill');
+  if (!filled) flash('No open holes to fill');
 }
 
 // ---- Rendering --------------------------------------------------------------
@@ -466,11 +487,11 @@ function pick(e) {
   return hit ? { ...hit.object.userData, point: hit.point } : null;
 }
 
-// Free spot on the plane through the orbit centre, facing the camera.
-function pointOnViewPlane(e) {
+// Point under the pointer on the plane facing the camera through `through`.
+function pointOnViewPlane(e, through = controls.target) {
   aim(e);
   const normal = camera.getWorldDirection(new THREE.Vector3());
-  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, controls.target);
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, through);
   return raycaster.ray.intersectPlane(plane, new THREE.Vector3());
 }
 
@@ -654,6 +675,37 @@ function endDrag(drag) {
   $('undo').disabled = false;
 }
 
+// In the Link tool, dragging out of an atom pulls a link from the hole facing
+// the pointer, to the atom under the pointer or to the pointer itself.
+function stretchLink(fromId, e) {
+  clearGhost();
+  hoverHalo.visible = false;
+  const from = atomById(fromId);
+  const hit = pick(e);
+  const to = hit?.type === 'atom' && hit.id !== fromId ? atomById(hit.id) : null;
+  if (to) placeHalo(hoverHalo, to, BLUE);
+  if (to && bonded(from.id, to.id)) return;
+  const end = to ? posOf(to) : pointOnViewPlane(e, posOf(from));
+  if (!end) return;
+  const toward = end.clone().sub(posOf(from)).normalize();
+  const ha = nearestHole(from, freeHoles(from), toward);
+  const hb = to ? nearestHole(to, freeHoles(to), toward.clone().negate()) : null;
+  if (ha === null || (to && hb === null)) return;
+  const [curve] = linkCurves(
+    posOf(from), holeDir(from, ha), radiusOf(from.kind),
+    end, to ? holeDir(to, hb) : toward.clone().negate(), to ? radiusOf(to.kind) : 0, 1,
+  );
+  const material = new THREE.MeshStandardMaterial({ color: 0x9c9c9c, transparent: true, opacity: 0.6, depthWrite: false });
+  const tube = new THREE.TubeGeometry(curve, 20, 0.07, 10);
+  ghost.add(new THREE.Mesh(tube, material));
+  ghostDisposables.push(material, tube);
+}
+
+function dropLink(fromId, e) {
+  const hit = pick(e);
+  if (hit?.type === 'atom' && hit.id !== fromId) link(atomById(fromId), atomById(hit.id));
+}
+
 // A press on an atom or bond belongs to us, not the orbit controls, so this
 // listens in the capture phase on the canvas's parent, ahead of OrbitControls.
 let grab = null;
@@ -675,9 +727,16 @@ canvas.addEventListener('pointermove', e => {
       if (Math.hypot(dx, dy) < 6) return;
       lastPointer = null;
       clearHover();
-      grab.drag = startDrag(grab.hit);
+      if (tool === 'link' && grab.hit.type === 'atom') {
+        linkFrom = null;
+        showSelection();
+        grab.drag = { linkFrom: grab.hit.id };
+      } else {
+        grab.drag = startDrag(grab.hit);
+      }
     }
-    if (grab.drag) turn(grab.drag, dx, dy);
+    if (grab.drag?.linkFrom) stretchLink(grab.drag.linkFrom, e);
+    else if (grab.drag) turn(grab.drag, dx, dy);
     canvas.style.cursor = 'grabbing';
   } else if (e.buttons) {
     lastPointer = null;
@@ -692,8 +751,12 @@ function release(e, cancelled) {
   const { x, y, drag } = grab;
   grab = null;
   controls.enabled = true;
-  if (drag !== undefined) endDrag(drag);
-  else if (!cancelled && Math.hypot(e.clientX - x, e.clientY - y) < 6) click(e);
+  if (drag?.linkFrom) {
+    clearHover();
+    if (!cancelled) dropLink(drag.linkFrom, e);
+  } else if (drag !== undefined) {
+    endDrag(drag);
+  } else if (!cancelled && Math.hypot(e.clientX - x, e.clientY - y) < 6) click(e);
 }
 canvas.addEventListener('pointerup', e => release(e, false));
 canvas.addEventListener('pointercancel', e => release(e, true));
@@ -726,7 +789,7 @@ function refreshHint() {
       ? `Click an atom to snap ${label(kindId)} into its nearest free hole`
       : `Click anywhere to place ${label(kindId)}`,
     link: linkFrom === null
-      ? 'Click two atoms to join them with a flexible link, for closing rings'
+      ? 'Drag from one atom to another to join them, or click both. Join them again for a double or triple bond'
       : 'Now click the atom to join it to',
     order: 'Click a bond to cycle single, double, triple',
     delete: 'Click an atom or a bond to remove it',
@@ -744,10 +807,10 @@ function refreshReadout() {
     ? order.map(el => el + (counts[el] > 1 ? `<sub>${counts[el]}</sub>` : '')).join('')
     : '&mdash;';
   const mass = model.atoms.reduce((m, a) => m + ELEMENTS[kindOf(a).el].mass, 0);
-  const open = model.atoms.reduce((n, a) => n + freeHoles(a).length, 0);
+  const open = model.atoms.reduce((n, a) => n + openHoles(a), 0);
   $('details').textContent = model.atoms.length
     ? `${mass.toFixed(2)} g/mol · ${model.atoms.length} atom${model.atoms.length > 1 ? 's' : ''} · ` +
-      (open ? `${open} open hole${open > 1 ? 's' : ''}` : 'every hole filled')
+      (open ? `${open} open hole${open > 1 ? 's' : ''}` : 'complete')
     : 'Pick an atom from the box to start';
   refreshName(open);
 }
