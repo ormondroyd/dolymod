@@ -345,15 +345,18 @@ async function openFile(file) {
 
 // ---- Examples ---------------------------------------------------------------
 
+// An example PubChem can't name (a cut-off piece of crystal, say) keeps its
+// label for as long as its atoms and links are as loaded.
+let labelled = null;
+const structure = () => model.atoms.map(a => a.id + a.kind).join() + '|' + model.bonds.map(b => `${b.a}-${b.b}`).join();
+
 function loadExample(example) {
   change(() => {
     model = { atoms: [], bonds: [], nextId: model.nextId };
-    if (example.tree) {
-      grow(example.tree, null);
-      fillHoles();
-    } else {
-      assemble(example.build(bondLength));
-    }
+    if (example.tree) grow(example.tree, null);
+    else assemble(example.build(bondLength));
+    if (example.tree || example.fill) fillHoles();
+    labelled = example.label ? { label: example.label, structure: structure() } : null;
   });
   fitView();
 }
@@ -1055,8 +1058,10 @@ function refreshReadout() {
     const rest = Object.keys(counts).filter(el => el !== 'C' && el !== 'H').sort();
     order = ['C', ...(counts.H ? ['H'] : []), ...rest];
   } else {
-    // Without carbon, IUPAC's element sequence gives the familiar NH3, H2O, HCl.
+    // Without carbon, IUPAC's element sequence gives the familiar NH3, H2O, HCl;
+    // acids with oxygen put their hydrogen first, as in H2SO4 and H3PO4.
     const sequence = ['Na', 'B', 'Si', 'P', 'N', 'H', 'S', 'I', 'Br', 'Cl', 'O', 'F'];
+    if (counts.H && counts.O) sequence.unshift('H');
     order = Object.keys(counts).sort((x, y) => sequence.indexOf(x) - sequence.indexOf(y));
   }
   $('formula').innerHTML = order.length
@@ -1083,6 +1088,11 @@ function isSalt() {
 }
 
 function refreshName(open) {
+  if (labelled?.structure === structure()) {
+    clearTimeout(nameTimer);
+    namedSmiles = null;
+    return showName(labelled.label);
+  }
   if (isSalt()) {
     clearTimeout(nameTimer);
     namedSmiles = null;
