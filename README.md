@@ -30,7 +30,7 @@ work, because browsers block ES modules on `file://`.)
   link. Use it to close strained rings such as cyclopropane. Join the same two atoms
   again to make the bond double, then triple. Rings that fit exactly, such as benzene
   or chair cyclohexane, close on their own when the last atom goes in.
-- **Bond order**: click a bond to cycle single, double, triple.
+- **Bond type**: click a bond to make it single, double or triple.
 - **Delete**: click an atom or a bond. Deleting an atom also removes the hydrogens on it.
 - **Fill with H** puts hydrogens in the free holes, up to each atom's usual valence. A
   double bond uses one hole, so a 4-hole carbon in a double bond keeps one hole spare.

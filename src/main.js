@@ -793,7 +793,7 @@ function refreshHint() {
     link: linkFrom === null
       ? 'Drag from one atom to another to join them, or click both. Join them again for a double or triple bond'
       : 'Now click the atom to join it to',
-    order: 'Click a bond to cycle single, double, triple',
+    order: 'Click a bond to make it single, double or triple',
     delete: 'Click an atom or a bond to remove it',
   };
   $('hint').textContent = hints[tool];

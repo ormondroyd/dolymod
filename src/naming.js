@@ -46,7 +46,9 @@ export function toSmiles(atoms, bonds) {
       charged.add(atom.id);
       continue;
     }
-    const fix = used < Math.min(...el.valence) ? 'Make one of its bonds double' : 'Lower one of its bond orders';
+    const fix = used < Math.min(...el.valence)
+      ? 'Use Bond type to make one of its bonds double'
+      : 'Use Bond type to make one of its double bonds single';
     return {
       problem: `One ${el.name.toLowerCase()} has ${used} bond${used === 1 ? '' : 's'} but needs ${listOr(el.valence)}. ${fix}.`,
     };
