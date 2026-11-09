@@ -33,12 +33,14 @@ work, because browsers block ES modules on `file://`.)
 - **Delete**: click an atom or a link. Deleting an atom also removes the hydrogens on it;
   deleting one link of a double bond leaves a single bond.
 - **Fill with H** puts a hydrogen in every free hole.
-- **Examples**: load one of 38 ready-made models, in six groups: gases (hydrogen to
-  hydrogen sulfide), everyday chemicals (water, alcohol, vinegar, nail polish remover,
-  urea, glycine and more), acids, rings (cyclopropane, chair cyclohexane, benzene),
-  weird and wonderful (cubane, tetrahedrane, prismane, propellane, dodecahedrane,
-  adamantane, SF₆, PCl₅, hydrogen cyanide), and crystals and cages (salt, a chunk of
-  diamond, the buckyball). Undo takes you back to what you had.
+- **Examples**: load one of 56 ready-made models, in ten groups: gases, everyday
+  chemicals (water to indigo), food and flavours (caffeine, chocolate's theobromine,
+  vanillin, chilli, mint, oranges, sugar, lemons), medicines (aspirin, paracetamol,
+  ibuprofen), body chemicals (dopamine, serotonin, adrenaline), acids, poisons
+  (nicotine, pufferfish tetrodotoxin, hydrogen cyanide), rings, weird and wonderful
+  (cubane, tetrahedrane, propellane, dodecahedrane and more), and crystals and cages
+  (salt, diamond, the buckyball). Loading one turns the view to face it; Undo takes you
+  back to what you had.
 - **Saving**: your model is kept in the browser as you build, so it comes back after a
   refresh. **Save** downloads it as a `.dolymod.json` file and **Load** opens one.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
@@ -79,8 +81,10 @@ and a triple bond is three. The atoms turn so the links bend evenly side by side
 - `src/kit.js`: element colours and sizes, and the hole directions for each atom.
 - `src/main.js`: the model, the placement rules, rendering and interaction.
 - `src/naming.js`: the SMILES writer and PubChem lookup.
-- `src/examples.js`: the Examples menu: small molecules as build steps, and generated
-  shapes (benzene, the salt crystal, the buckyball).
+- `src/examples.js`: the Examples menu: small molecules as build steps, generated
+  shapes (cages, the salt crystal, the buckyball), and ring molecules as SMILES.
+- `src/layout.js`: reads SMILES (from PubChem), adds the hydrogens, and lays the
+  molecule out in 3D by nudging atoms until bond lengths and angles come out right.
 
 Uses [three.js](https://threejs.org) 0.160 from a CDN.
 

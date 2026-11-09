@@ -8,8 +8,10 @@
 // Bigger shapes `build` a list of atom positions and links (a pair of atom
 // indexes per link, listed twice for a double bond); the kit then turns each
 // ball so its holes face its links, and fills the rest with H if `fill` is set.
-// `label` names a model PubChem can't, such as a piece of crystal.
+// `label` names a model PubChem can't, such as a piece of crystal. Molecules
+// with rings are written as SMILES (from PubChem) and laid out by layout.js.
 import * as THREE from 'three';
+import { fromSmiles } from './layout.js';
 
 const phi = (1 + Math.sqrt(5)) / 2;
 
@@ -34,15 +36,38 @@ export const EXAMPLES = [
   { group: 'Everyday', name: 'Butane (lighter fuel)', tree: ['C', ['C', ['C', 'C']]] },
   { group: 'Everyday', name: 'Ethene (ripens fruit)', tree: ['C', '=C'] },
   { group: 'Everyday', name: 'Glycine (an amino acid)', tree: ['N', ['C', ['C', '=O', 'O']]] },
+  { group: 'Everyday', name: 'Indigo (blue jeans dye)', build: fromSmiles('C1=CC=C2C(=C1)C(=C(N2)C3=NC4=CC=CC=C4C3=O)O') },
+
+  { group: 'Food and flavours', name: 'Caffeine (coffee)', build: fromSmiles('CN1C=NC2=C1C(=O)N(C(=O)N2C)C') },
+  { group: 'Food and flavours', name: 'Theobromine (chocolate)', build: fromSmiles('CN1C=NC2=C1C(=O)NC(=O)N2C') },
+  { group: 'Food and flavours', name: 'Vanillin (vanilla)', build: fromSmiles('COC1=C(C=CC(=C1)C=O)O') },
+  { group: 'Food and flavours', name: 'Capsaicin (chilli heat)', build: fromSmiles('CC(C)C=CCCCCC(=O)NCC1=CC(=C(C=C1)O)OC'), label: 'Capsaicin' },
+  { group: 'Food and flavours', name: 'Menthol (mint)', build: fromSmiles('CC1CCC(C(C1)O)C(C)C') },
+  { group: 'Food and flavours', name: 'Limonene (oranges)', build: fromSmiles('CC1=CCC(CC1)C(=C)C'), label: 'Limonene' },
+  { group: 'Food and flavours', name: 'Glucose (sugar)', build: fromSmiles('C(C1C(C(C(C(O1)O)O)O)O)O'), label: 'Glucose' },
+  { group: 'Food and flavours', name: 'Citric acid (lemons)', build: fromSmiles('C(C(=O)O)C(CC(=O)O)(C(=O)O)O') },
+
+  { group: 'Medicines', name: 'Aspirin', build: fromSmiles('CC(=O)OC1=CC=CC=C1C(=O)O') },
+  { group: 'Medicines', name: 'Paracetamol', build: fromSmiles('CC(=O)NC1=CC=C(C=C1)O'), label: 'Paracetamol' },
+  { group: 'Medicines', name: 'Ibuprofen', build: fromSmiles('CC(C)CC1=CC=C(C=C1)C(C)C(=O)O'), label: 'Ibuprofen' },
+
+  { group: 'Body chemicals', name: 'Dopamine (reward)', build: fromSmiles('C1=CC(=C(C=C1CCN)O)O') },
+  { group: 'Body chemicals', name: 'Serotonin (mood)', build: fromSmiles('C1=CC2=C(C=C1O)C(=CN2)CCN') },
+  { group: 'Body chemicals', name: 'Adrenaline (fight or flight)', build: fromSmiles('CNCC(C1=CC(=C(C=C1)O)O)O'), label: 'Adrenaline' },
 
   { group: 'Acids', name: 'Hydrogen chloride (hydrochloric acid)', tree: ['Cl'] },
   { group: 'Acids', name: 'Sulfuric acid (car batteries)', tree: ['S6', '=O', '=O', 'O', 'O'] },
   { group: 'Acids', name: 'Phosphoric acid (in cola)', tree: ['P5', '=O', 'O', 'O', 'O'] },
   { group: 'Acids', name: 'Formic acid (ant stings)', tree: ['C', '=O', 'O'] },
 
+  { group: 'Poisons', name: 'Nicotine (tobacco)', build: fromSmiles('CN1CCCC1C2=CN=CC=C2'), label: 'Nicotine' },
+  { group: 'Poisons', name: 'Tetrodotoxin (pufferfish)', build: fromSmiles('C(C1(C2C3C(N=C(NC34C(C1OC(C4O)(O2)O)O)N)O)O)O'), label: 'Tetrodotoxin' },
+  { group: 'Poisons', name: 'Hydrogen cyanide', tree: ['C', '#N'] },
+
   { group: 'Rings', name: 'Cyclopropane', build: cage(ring(3, 0)), fill: true },
   { group: 'Rings', name: 'Cyclohexane', build: cage(ring(6, 1 / 6)), fill: true },
   { group: 'Rings', name: 'Benzene', build: benzene },
+  { group: 'Rings', name: 'Naphthalene (mothballs)', build: fromSmiles('C1=CC=C2C=CC=CC2=C1') },
 
   { group: 'Weird and wonderful', name: 'Cubane (a cube)', build: cage(cube()), fill: true },
   { group: 'Weird and wonderful', name: 'Tetrahedrane (never made!)', build: cage(tetrahedron()), fill: true },
@@ -52,7 +77,6 @@ export const EXAMPLES = [
   { group: 'Weird and wonderful', name: 'Adamantane (a tiny diamond)', build: cage(adamantane()), fill: true },
   { group: 'Weird and wonderful', name: 'Sulfur hexafluoride', tree: ['S6', 'F', 'F', 'F', 'F', 'F', 'F'] },
   { group: 'Weird and wonderful', name: 'Phosphorus pentachloride', tree: ['P5', 'Cl', 'Cl', 'Cl', 'Cl', 'Cl'] },
-  { group: 'Weird and wonderful', name: 'Hydrogen cyanide (poison)', tree: ['C', '#N'] },
 
   { group: 'Crystals and cages', name: 'Salt crystal', build: salt },
   { group: 'Crystals and cages', name: 'Diamond chunk', build: cage(diamond()), label: 'Diamond (a chunk of the crystal)' },

@@ -11,6 +11,7 @@ import { EXAMPLES } from './examples.js';
 const $ = id => document.getElementById(id);
 const X = new THREE.Vector3(1, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);
+const Z = new THREE.Vector3(0, 0, 1);
 
 // ---- Scene ------------------------------------------------------------------
 
@@ -358,6 +359,8 @@ function loadExample(example) {
     if (example.tree || example.fill) fillHoles();
     labelled = example.label ? { label: example.label, structure: structure() } : null;
   });
+  // Show it face on.
+  camera.position.copy(controls.target).add(Z);
   fitView();
 }
 
@@ -1079,6 +1082,7 @@ function refreshReadout() {
 // The name comes from PubChem, looked up once the model is a whole molecule.
 // `namedSmiles` skips the lookup when an edit (a twist, say) keeps the structure.
 let namedSmiles = null;
+let namedLabel = null;
 let nameTimer;
 
 // A model made only of salt-crystal atoms, with both sodium and chloride in it.
@@ -1088,11 +1092,9 @@ function isSalt() {
 }
 
 function refreshName(open) {
-  if (labelled?.structure === structure()) {
-    clearTimeout(nameTimer);
-    namedSmiles = null;
-    return showName(labelled.label);
-  }
+  // A loaded example's own name wins while it is as loaded; PubChem's details
+  // still show underneath when PubChem knows it.
+  const label = labelled?.structure === structure() ? labelled.label : null;
   if (isSalt()) {
     clearTimeout(nameTimer);
     namedSmiles = null;
@@ -1101,24 +1103,25 @@ function refreshName(open) {
   const result = !model.atoms.length ? { problem: '' }
     : open ? { problem: 'Fill the open holes to name it' }
     : toSmiles(model.atoms.map(a => ({ id: a.id, el: kindOf(a).el })), model.bonds);
-  if (result.smiles === namedSmiles && namedSmiles) return;
+  if (result.smiles === namedSmiles && namedSmiles && label === namedLabel) return;
   clearTimeout(nameTimer);
   namedSmiles = result.smiles ?? null;
-  if (!namedSmiles) return showName(result.problem, { status: true });
+  namedLabel = label;
+  if (!namedSmiles) return label ? showName(label) : showName(result.problem, { status: true });
 
   const smiles = namedSmiles;
-  showName('Looking up the name…', { status: true });
+  showName(label ?? 'Looking up the name…', { status: !label });
   nameTimer = setTimeout(() => {
     lookUp(smiles).then(
       hit => {
         if (namedSmiles !== smiles) return;
-        if (hit) showName(displayName(hit), { iupac: hit.iupac, cid: hit.cid });
-        else showName('PubChem has no compound like this', { status: true, smiles });
+        if (hit) showName(label ?? displayName(hit), { iupac: hit.iupac, cid: hit.cid });
+        else if (!label) showName('PubChem has no compound like this', { status: true, smiles });
       },
       () => {
         if (namedSmiles !== smiles) return;
         namedSmiles = null;
-        showName("Couldn't reach PubChem to name it", { status: true, smiles });
+        if (!label) showName("Couldn't reach PubChem to name it", { status: true, smiles });
       },
     );
   }, 400);
