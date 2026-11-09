@@ -51,6 +51,10 @@ button:hover { background: var(--button-hover); }
 button:disabled { opacity: 0.45; cursor: default; background: var(--button); }
 button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+/* Pressing and holding on the kit shouldn't select text or open a callout. */
+.bar, .palette, .stage { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 .bar {
   display: flex;
@@ -187,6 +191,24 @@ main { flex: 1; display: flex; min-height: 0; }
 .subname { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .formula { font-size: 22px; font-weight: 650; }
 .details { font-size: 12px; color: var(--muted); }
+.zoom {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.zoom button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  background: var(--panel);
+}
 .help { right: 16px; bottom: 16px; max-width: 300px; text-align: right; font-size: 12px; color: var(--muted); }
 
 @media (max-width: 720px) {
@@ -207,4 +229,10 @@ main { flex: 1; display: flex; min-height: 0; }
   .chip { touch-action: pan-x; }
   .readout { left: 16px; bottom: 12px; padding: 8px 12px; }
   .formula { font-size: 18px; }
+}
+
+/* Touchscreens: tap targets at least 44px. */
+@media (pointer: coarse) {
+  .tools button, .actions button { min-height: 44px; }
+  .chip { min-height: 48px; }
 }

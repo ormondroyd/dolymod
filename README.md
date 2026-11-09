@@ -37,7 +37,11 @@ work, because browsers block ES modules on `file://`.)
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
   so this needs an internet connection. Cis/trans and mirror-image forms aren't told
   apart yet.
-- Right-drag to pan, scroll to zoom. Ctrl/⌘ Z undoes.
+- **Moving the view**: drag empty space to turn it. Zoom with the mouse wheel, a pinch, the
+  + and − buttons or keys. Pan with two fingers, a right-drag, or Shift-drag. Ctrl/⌘ Z
+  undoes.
+- **Touchscreens**: tap where you would click. While your finger is down on an atom, the
+  preview shows where the new atom will go. Drag atoms out of the box with a finger too.
 
 ## The parts box
 

@@ -30,14 +30,19 @@ scene.add(camera);
 
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
+controls.zoomToCursor = true;
+controls.minDistance = 2;
+controls.maxDistance = 80;
 
-new ResizeObserver(() => {
+function fitCanvas() {
   const { clientWidth: w, clientHeight: h } = canvas;
   if (!w || !h) return;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-}).observe(canvas);
+}
+new ResizeObserver(fitCanvas).observe(canvas);
+fitCanvas();
 
 renderer.setAnimationLoop(() => {
   controls.update();
@@ -464,6 +469,13 @@ function fitView() {
   camera.position.copy(sphere.center).addScaledVector(direction, distance);
 }
 
+// For the + and - buttons and keys: move the camera in or out by `factor`.
+function zoomBy(factor) {
+  const offset = camera.position.clone().sub(controls.target);
+  const distance = THREE.MathUtils.clamp(offset.length() * factor, controls.minDistance, controls.maxDistance);
+  camera.position.copy(controls.target).add(offset.setLength(distance));
+}
+
 // ---- Interaction ------------------------------------------------------------
 
 let tool = 'add';
@@ -480,9 +492,11 @@ function ndcOf(e) {
   return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
 }
 
-// Matrices normally refresh when a frame renders; refresh them here so a click
-// straight after a change (or in a background tab) tests the current scene.
+// Matrices and the canvas size normally refresh when a frame renders; refresh
+// them here so a tap straight after a change, a resize or a phone rotation (or
+// in a background tab) tests the current scene.
 function aim(e) {
+  if (Math.abs(camera.aspect - canvas.clientWidth / canvas.clientHeight) > 1e-3) fitCanvas();
   scene.updateMatrixWorld();
   raycaster.setFromCamera(ndcOf(e), camera);
 }
@@ -706,25 +720,46 @@ function dropLink(fromId, e) {
   if (hit?.type === 'atom' && hit.id !== fromId) link(atomById(fromId), atomById(hit.id));
 }
 
-// A press on an atom or bond belongs to us, not the orbit controls, so this
-// listens in the capture phase on the canvas's parent, ahead of OrbitControls.
+// A press on an atom or bond is ours: it turns, twists or links instead of
+// turning the view. This listens in the capture phase on the canvas's parent,
+// ahead of OrbitControls, and only switches off the controls' rotation, so
+// they still see every finger and a second finger can pinch or pan.
 let grab = null;
+const fingers = new Set();
+const slop = touch => (touch ? 12 : 6);
+
+function letGo() {
+  grab = null;
+  controls.enableRotate = true;
+}
+
 canvas.parentElement.addEventListener('pointerdown', e => {
-  if (e.target !== canvas || e.button !== 0) return;
-  const hit = pick(e);
-  grab = { x: e.clientX, y: e.clientY, hit, drag: undefined };
-  if (hit) {
-    controls.enabled = false;
-    canvas.setPointerCapture(e.pointerId);
+  if (e.target !== canvas) return;
+  if (e.isPrimary) fingers.clear();
+  fingers.add(e.pointerId);
+  if (fingers.size > 1) {
+    // Two fingers pinch or pan: finish whatever the first one started.
+    if (grab?.drag && !grab.drag.linkFrom) endDrag(grab.drag);
+    clearHover();
+    letGo();
+    return;
   }
+  if (e.button !== 0) return;
+  const touch = e.pointerType === 'touch';
+  // Shift, Ctrl or Cmd with a drag pans the view, even from an atom.
+  const hit = e.shiftKey || e.ctrlKey || e.metaKey ? null : pick(e);
+  grab = { id: e.pointerId, x: e.clientX, y: e.clientY, hit, touch, drag: undefined };
+  if (hit) controls.enableRotate = false;
+  // A touchscreen has no hover, so show the preview under the finger instead.
+  if (touch && hit) hover(e);
 }, { capture: true });
 
 canvas.addEventListener('pointermove', e => {
-  if (grab?.hit) {
+  if (grab?.hit && e.pointerId === grab.id) {
     const dx = e.clientX - grab.x;
     const dy = e.clientY - grab.y;
     if (grab.drag === undefined) {
-      if (Math.hypot(dx, dy) < 6) return;
+      if (Math.hypot(dx, dy) < slop(grab.touch)) return;
       lastPointer = null;
       clearHover();
       if (tool === 'link' && grab.hit.type === 'atom') {
@@ -738,6 +773,8 @@ canvas.addEventListener('pointermove', e => {
     if (grab.drag?.linkFrom) stretchLink(grab.drag.linkFrom, e);
     else if (grab.drag) turn(grab.drag, dx, dy);
     canvas.style.cursor = 'grabbing';
+  } else if (e.pointerType === 'touch') {
+    // Fingers only hover while pressing, handled above.
   } else if (e.buttons) {
     lastPointer = null;
     clearHover();
@@ -747,16 +784,20 @@ canvas.addEventListener('pointermove', e => {
 });
 
 function release(e, cancelled) {
-  if (!grab) return;
-  const { x, y, drag } = grab;
-  grab = null;
-  controls.enabled = true;
+  fingers.delete(e.pointerId);
+  if (!grab || e.pointerId !== grab.id) return;
+  const { x, y, drag, touch } = grab;
+  letGo();
+  if (touch) {
+    lastPointer = null;
+    clearHover();
+  }
   if (drag?.linkFrom) {
     clearHover();
     if (!cancelled) dropLink(drag.linkFrom, e);
   } else if (drag !== undefined) {
     endDrag(drag);
-  } else if (!cancelled && Math.hypot(e.clientX - x, e.clientY - y) < 6) click(e);
+  } else if (!cancelled && Math.hypot(e.clientX - x, e.clientY - y) < slop(touch)) click(e);
 }
 canvas.addEventListener('pointerup', e => release(e, false));
 canvas.addEventListener('pointercancel', e => release(e, true));
@@ -769,6 +810,10 @@ window.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     undo();
+  } else if (e.key === '+' || e.key === '=') {
+    zoomBy(0.8);
+  } else if (e.key === '-') {
+    zoomBy(1.25);
   } else if (e.key === 'Escape' && linkFrom !== null) {
     linkFrom = null;
     showSelection();
@@ -859,7 +904,7 @@ function refreshName(open) {
     lookUp(smiles).then(
       hit => {
         if (namedSmiles !== smiles) return;
-        if (hit) showName(hit.title, { iupac: hit.iupac, cid: hit.cid });
+        if (hit) showName(displayName(hit), { iupac: hit.iupac, cid: hit.cid });
         else showName('PubChem has no compound like this', { status: true, smiles });
       },
       () => {
@@ -869,6 +914,14 @@ function refreshName(open) {
       },
     );
   }, 400);
+}
+
+// PubChem's title is usually the everyday name ("Ethanol"), but for less common
+// compounds it is a catalogue name like "Propane, 2-fluoro-2-methyl-". Show the
+// IUPAC name ("2-fluoro-2-methylpropane") instead of those.
+function displayName({ title, iupac }) {
+  if (!iupac || !/, |-$/.test(title)) return title;
+  return iupac.charAt(0).toUpperCase() + iupac.slice(1);
 }
 
 function showName(text, { status = false, iupac = '', cid = null, smiles = '' } = {}) {
@@ -978,6 +1031,11 @@ function dragFromBox(chip, kind) {
   });
   const finish = (e, drop) => {
     if (floating && drop && overCanvas(e)) attachAt(e, true);
+    if (floating && e.pointerType === 'touch') {
+      // A lifted finger leaves no pointer to keep a preview under.
+      lastPointer = null;
+      clearHover();
+    }
     floating?.remove();
     floating = start = null;
   };
@@ -989,6 +1047,8 @@ document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click'
 $('fill').addEventListener('click', fillHydrogens);
 $('undo').addEventListener('click', undo);
 $('fit').addEventListener('click', fitView);
+$('zoom-in').addEventListener('click', () => zoomBy(0.8));
+$('zoom-out').addEventListener('click', () => zoomBy(1.25));
 $('clear').addEventListener('click', () => change(() => { model = { atoms: [], bonds: [], nextId: model.nextId }; }));
 
 setTool('add');
