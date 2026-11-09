@@ -834,7 +834,7 @@ for (const kind of KINDS) {
   chip.title = `${el.name}: ${n} hole${n > 1 ? 's' : ''}, ${kind.shape}`;
   chip.innerHTML =
     `<span class="ball" style="--c:${el.color}" data-n="${n}"></span>` +
-    `<span class="sym">${kind.el}</span><span class="geo">${kind.shape}</span>`;
+    `<span class="sym">${kind.el} <span class="el-name">${el.name}</span></span><span class="geo">${kind.shape}</span>`;
   chip.addEventListener('click', () => {
     kindId = kind.id;
     setTool('add');
