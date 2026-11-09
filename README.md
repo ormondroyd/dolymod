@@ -24,40 +24,41 @@ work, because browsers block ES modules on `file://`.)
   anywhere to place the first atom. To start a second piece, drop an atom on empty
   space or Shift-click there.
 - **Turn and twist**: drag an atom to turn the whole piece it belongs to. Drag a bond to
-  twist one side of the molecule around it, for staggered and eclipsed forms (bonds in
-  a ring can't twist). Drag empty space to turn the view.
+  twist one side of the molecule around it, for staggered and eclipsed forms. Bonds in a
+  ring, and double or triple bonds, can't twist. Drag empty space to turn the view.
 - **Link**: drag from one atom to another (or click both) to join them with a flexible
   link. Use it to close strained rings such as cyclopropane. Join the same two atoms
-  again to make the bond double, then triple. Rings that fit exactly, such as benzene
-  or chair cyclohexane, close on their own when the last atom goes in.
-- **Bond type**: click a bond to make it single, double or triple.
+  again to make the bond double, then triple. A ring that fits exactly, such as chair
+  cyclohexane, closes on its own when the last atom goes in.
+- **Bond type**: click a bond to add another link: double, then triple, then back to single.
 - **Delete**: click an atom or a bond. Deleting an atom also removes the hydrogens on it.
-- **Fill with H** puts hydrogens in the free holes, up to each atom's usual valence. A
-  double bond uses one hole, so a 4-hole carbon in a double bond keeps one hole spare.
+- **Fill with H** puts a hydrogen in every free hole.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
-  so this needs an internet connection. If an atom has the wrong number of bonds (a
-  trigonal carbon with three single bonds, say), it tells you instead. Cis/trans and
-  mirror-image forms aren't told apart yet.
+  so this needs an internet connection. Cis/trans and mirror-image forms aren't told
+  apart yet.
 - Right-drag to pan, scroll to zoom. Ctrl/⌘ Z undoes.
 
 ## The parts box
 
+Every ball has one hole for each bond its element makes, as in the real kit.
+
 | Atom | Holes |
 | --- | --- |
-| H, F, Cl, Br, I | 1 |
-| C | 4 tetrahedral, 3 trigonal, 2 linear |
-| N | 3 pyramidal, 2 bent (120°), 4 tetrahedral, 1 |
-| O | 2 bent, 1 |
-| S | 2 bent, 4 tetrahedral, 6 octahedral |
-| P | 4 tetrahedral, 5 trigonal bipyramidal |
+| Carbon | 4 |
+| Nitrogen, phosphorus | 3 |
+| Oxygen, sulfur | 2 |
+| Hydrogen, fluorine, chlorine, bromine, iodine | 1 |
+
+A double bond is two flexible links between the same two atoms, each in its own hole,
+and a triple bond is three. The atoms turn so the links bend evenly side by side.
 
 ## Code
 
 - `index.html`, `style.css`: the page.
-- `src/kit.js`: element colours and sizes, and the hole directions for each kind of atom.
+- `src/kit.js`: element colours and sizes, and the hole directions for each atom.
 - `src/main.js`: the model, the placement rules, rendering and interaction.
-- `src/naming.js`: the valence check, SMILES writer and PubChem lookup.
+- `src/naming.js`: the SMILES writer and PubChem lookup.
 
 Uses [three.js](https://threejs.org) 0.160 from a CDN.
 

@@ -1,21 +1,25 @@
-// Naming: check the model is one sensible molecule, write it as SMILES, and
-// ask PubChem what it is called. Hydrogens are written as counts on the atom
-// they hang off ([CH3]), so no implicit-valence rules come into it.
-import { ELEMENTS } from './kit.js';
+// Naming: check the model is one molecule, write it as SMILES, and ask
+// PubChem what it is called. Hydrogens are written as counts on the atom they
+// hang off ([CH3]), so no implicit-valence rules come into it. Every atom has
+// one hole per bond, so a model with every hole filled has the right valences.
 
 const PUBCHEM = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/property/Title,IUPACName/JSON';
 
 const BOND_SYMBOL = ['', '', '=', '#'];
 const ringLabel = n => (n < 10 ? String(n) : `%${n}`);
 
-function listOr(numbers) {
-  return numbers.length > 1 ? `${numbers.slice(0, -1).join(', ')} or ${numbers.at(-1)}` : String(numbers[0]);
-}
-
-// atoms: [{ id, el }], bonds: [{ a, b, order }]. Returns { smiles } or
-// { problem } with a sentence saying why the model can't be named yet.
-export function toSmiles(atoms, bonds) {
+// atoms: [{ id, el }], links: [{ a, b }], with two or three links between the
+// same atoms for a double or triple bond. Returns { smiles } or { problem }
+// with a sentence saying why the model can't be named yet.
+export function toSmiles(atoms, links) {
   const byId = new Map(atoms.map(a => [a.id, a]));
+  const pairs = new Map();
+  for (const l of links) {
+    const key = l.a < l.b ? `${l.a}-${l.b}` : `${l.b}-${l.a}`;
+    if (pairs.has(key)) pairs.get(key).order += 1;
+    else pairs.set(key, { a: l.a, b: l.b, order: 1 });
+  }
+  const bonds = [...pairs.values()];
   const bondsOf = new Map(atoms.map(a => [a.id, []]));
   for (const b of bonds) {
     bondsOf.get(b.a).push(b);
@@ -36,23 +40,6 @@ export function toSmiles(atoms, bonds) {
     }
   }
   if (reached.size < atoms.length) return { problem: 'Join the pieces into one molecule to name it' };
-
-  const charged = new Set();
-  for (const atom of atoms) {
-    const el = ELEMENTS[atom.el];
-    const used = bondsOf.get(atom.id).reduce((sum, b) => sum + b.order, 0);
-    if (el.valence.includes(used)) continue;
-    if (el.cation === used) {
-      charged.add(atom.id);
-      continue;
-    }
-    const fix = used < Math.min(...el.valence)
-      ? 'Use Bond type to make one of its bonds double'
-      : 'Use Bond type to make one of its double bonds single';
-    return {
-      problem: `One ${el.name.toLowerCase()} has ${used} bond${used === 1 ? '' : 's'} but needs ${listOr(el.valence)}. ${fix}.`,
-    };
-  }
 
   const heavy = atoms.filter(a => a.el !== 'H');
   if (!heavy.length) return { smiles: '[H][H]' };
@@ -110,7 +97,7 @@ export function toSmiles(atoms, bonds) {
 
   function write(id, via) {
     const h = bondsOf.get(id).filter(b => isH(other(b, id))).length;
-    let text = `${via ? BOND_SYMBOL[via.order] : ''}[${byId.get(id).el}${h ? `H${h > 1 ? h : ''}` : ''}${charged.has(id) ? '+' : ''}]`;
+    let text = `${via ? BOND_SYMBOL[via.order] : ''}[${byId.get(id).el}${h ? `H${h > 1 ? h : ''}` : ''}]`;
     text += ringLabels(id);
     const kids = children.get(id);
     kids.forEach(([n, b], i) => {

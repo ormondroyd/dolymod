@@ -95,9 +95,15 @@ function addAtom(kindId, p, q) {
   return atom;
 }
 
+// Each bond record is one flexible link between a hole on each atom. A double
+// bond is two links between the same pair of atoms, a triple bond three.
 function addBond(a, ha, b, hb) {
-  model.bonds.push({ id: model.nextId++, a: a.id, ha, b: b.id, hb, order: 1 });
+  model.bonds.push({ id: model.nextId++, a: a.id, ha, b: b.id, hb });
 }
+
+const linksBetween = (a, b) =>
+  model.bonds.filter(l => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id));
+const holeAt = (l, atom) => (l.a === atom.id ? l.ha : l.hb);
 
 // Removing an atom also removes anything that only hung off it (its hydrogens).
 function deleteAtom(id) {
@@ -130,9 +136,8 @@ function anglesAround(dirs, axis) {
 
 const angleGap = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 
-// How far to spin a new atom about its bond. Planar atoms line up with their
-// neighbour's plane; anything else is turned as far from staggered clashes as
-// it will go, which gives the staggered conformation for tetrahedral carbons.
+// How far to spin a new atom about its bond: as far from clashing with the
+// parent's other holes as it will go, which gives the staggered conformation.
 function twistAngle(parent, hole, kind, q1, axis) {
   const parentDirs = kindOf(parent).holes
     .filter((_, i) => i !== hole)
@@ -140,7 +145,6 @@ function twistAngle(parent, hole, kind, q1, axis) {
   const alphas = anglesAround(parentDirs, axis);
   const betas = anglesAround(kind.holes.slice(1).map(d => d.clone().applyQuaternion(q1)), axis);
   if (!alphas.length || !betas.length) return 0;
-  if (kindOf(parent).planar || kind.planar) return alphas[0] - betas[0];
   let best = 0;
   let bestGap = -1;
   for (let deg = 0; deg < 360; deg++) {
@@ -184,47 +188,89 @@ function closeRings(atom) {
   }
 }
 
-// Join two atoms. Joining them again adds a link, as with the real kit:
-// a second makes a double bond, a third a triple.
+// Join two atoms with a link. Joining them again plugs another link into
+// another hole on each, as with the real kit: two links make a double bond,
+// three a triple.
 function link(a, b) {
-  const existing = model.bonds.find(bd => (bd.a === a.id && bd.b === b.id) || (bd.a === b.id && bd.b === a.id));
-  if (existing) {
-    if (existing.order === 3) return flash('That is already a triple bond');
-    return change(() => { existing.order += 1; });
-  }
+  const already = linksBetween(a, b).length;
+  if (already === 3) return flash('Those atoms already have three links');
   const toB = posOf(b).sub(posOf(a)).normalize();
   const ha = nearestHole(a, freeHoles(a), toB);
   const hb = nearestHole(b, freeHoles(b), toB.clone().negate());
   if (ha === null || hb === null) return flash('Both atoms need a free hole');
-  change(() => addBond(a, ha, b, hb));
+  change(() => {
+    addBond(a, ha, b, hb);
+    if (already) settle(a, b);
+  });
 }
 
-// How many more bonds an atom wants to reach its usual valence. A double bond
-// takes one hole here, so a double-bonded 4-hole carbon keeps a spare hole.
-function bondsWanted(atom) {
-  const sum = bondsOf(atom.id).reduce((n, b) => n + b.order, 0);
-  const valence = ELEMENTS[kindOf(atom).el].valence;
-  return (valence.find(v => v >= sum) ?? sum) - sum;
+// Bond type: each click adds a link between the two atoms, up to three, then
+// goes back to one.
+function relink(bond) {
+  const a = atomById(bond.a);
+  const b = atomById(bond.b);
+  const links = linksBetween(a, b);
+  if (links.length < 3 && freeHoles(a).length && freeHoles(b).length) return link(a, b);
+  if (links.length === 1) return flash('Both atoms need a free hole for another link');
+  change(() => {
+    const extra = new Set(links.slice(1));
+    model.bonds = model.bonds.filter(l => !extra.has(l));
+  });
 }
 
-// Holes still waiting for an atom: free holes, up to what valence wants.
-const openHoles = atom => Math.min(freeHoles(atom).length, bondsWanted(atom));
+// When two atoms share two or three links, turn the lighter side of the
+// molecule so the links sit evenly around the line between the atoms and bend
+// like the kit's flexible links. In a ring nothing can turn, so the links just
+// bend further.
+function settle(a, b) {
+  const links = linksBetween(a, b);
+  const skip = new Set(links);
+  const sideB = pieceOf(b.id, skip);
+  if (sideB.has(a.id)) return;
+  const sideA = pieceOf(a.id, skip);
+  const [fixed, moving, side] = sideB.size <= sideA.size ? [a, b, sideB] : [b, a, sideA];
+
+  // Point the middle of each atom's link holes at the other atom...
+  const middle = (atom, dir) => links.reduce((sum, l) => sum.add(dir(holeAt(l, atom))), new THREE.Vector3()).normalize();
+  const axis = middle(fixed, i => holeDir(fixed, i));
+  const local = middle(moving, i => kindOf(moving).holes[i].clone());
+  const q1 = new THREE.Quaternion().setFromUnitVectors(local, axis.clone().negate());
+  // ...and spin the moving atom so its first link hole faces the fixed one's.
+  const [alpha] = anglesAround([holeDir(fixed, holeAt(links[0], fixed))], axis);
+  const [beta] = anglesAround([kindOf(moving).holes[holeAt(links[0], moving)].clone().applyQuaternion(q1)], axis);
+  const q = new THREE.Quaternion().setFromAxisAngle(axis, alpha - beta).multiply(q1);
+
+  const turn = q.multiply(quatOf(moving).invert());
+  const from = posOf(moving);
+  const to = posOf(fixed).addScaledVector(axis, bondLength(fixed.kind, moving.kind));
+  for (const id of side) {
+    const atom = atomById(id);
+    atom.p = posOf(atom).sub(from).applyQuaternion(turn).add(to).toArray();
+    atom.q = turn.clone().multiply(quatOf(atom)).toArray();
+  }
+
+  // Pair the holes up again so no two links cross.
+  const spare = links.map(l => holeAt(l, moving));
+  for (const l of links) {
+    const facing = holeDir(fixed, holeAt(l, fixed));
+    const best = spare.reduce((x, y) => (holeDir(moving, y).dot(facing) > holeDir(moving, x).dot(facing) ? y : x));
+    spare.splice(spare.indexOf(best), 1);
+    if (l.a === moving.id) l.ha = best;
+    else l.hb = best;
+  }
+}
 
 function fillHydrogens() {
   const filled = change(() => {
     for (const atom of [...model.atoms]) {
       if (kindOf(atom).el === 'H') continue;
-      let wanted = bondsWanted(atom);
       for (const h of freeHoles(atom)) {
-        if (wanted <= 0) break;
         const spot = placement(atom, h, 'H');
-        if (spot.blocked) continue;
-        addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
-        wanted--;
+        if (!spot.blocked) addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
       }
     }
   });
-  if (!filled) flash('No open holes to fill');
+  if (!filled) flash('No free holes to fill');
 }
 
 // ---- Rendering --------------------------------------------------------------
@@ -309,42 +355,16 @@ function bore(elId) {
   return bores.get(elId);
 }
 
-// A link leaves each ball along its hole and bends to meet the other, so
-// strained rings and Link-tool joins curve like the kit's flexible links.
-// Double and triple bonds are drawn as two or three bowed links.
-function linkCurves(pA, dA, rA, pB, dB, rB, order, normal) {
+// A link leaves each ball along its hole and bends to meet the other, like
+// the kit's flexible links: straight for a plain bond, curved side by side for
+// a double or triple bond, and curved further in a strained ring.
+function linkCurve(pA, dA, rA, pB, dB, rB) {
   const p0 = pA.clone().addScaledVector(dA, rA * 0.8);
   const p3 = pB.clone().addScaledVector(dB, rB * 0.8);
   const reach = p0.distanceTo(p3) / 3;
   const p1 = p0.clone().addScaledVector(dA, reach);
   const p2 = p3.clone().addScaledVector(dB, reach);
-  if (order === 1) return [new THREE.CubicBezierCurve3(p0, p1, p2, p3)];
-  const axis = p3.clone().sub(p0).normalize();
-  const side = new THREE.Vector3().crossVectors(axis, normal);
-  return Array.from({ length: order }, (_, k) => {
-    const t = (2 * Math.PI * k) / order;
-    const u = normal.clone().multiplyScalar(Math.cos(t)).addScaledVector(side, Math.sin(t));
-    return new THREE.CubicBezierCurve3(
-      p0.clone().addScaledVector(u, 0.04),
-      p1.clone().addScaledVector(u, 0.2),
-      p2.clone().addScaledVector(u, 0.2),
-      p3.clone().addScaledVector(u, 0.04),
-    );
-  });
-}
-
-// Multiple bonds bow out of the plane of the atoms' other holes, like pi bonds.
-function bondNormal(a, ha, b, hb) {
-  const axis = posOf(b).sub(posOf(a)).normalize();
-  for (const [atom, skip] of [[a, ha], [b, hb]]) {
-    for (const i of kindOf(atom).holes.keys()) {
-      if (i === skip) continue;
-      const d = holeDir(atom, i);
-      const perp = d.addScaledVector(axis, -d.dot(axis));
-      if (perp.length() > 0.2) return new THREE.Vector3().crossVectors(axis, perp).normalize();
-    }
-  }
-  return new THREE.Vector3().crossVectors(axis, Math.abs(axis.x) < 0.9 ? X : Y).normalize();
+  return new THREE.CubicBezierCurve3(p0, p1, p2, p3);
 }
 
 function rebuild() {
@@ -383,17 +403,13 @@ function rebuild() {
     const b = atomById(bond.b);
     const short = kindOf(a).el === 'H' || kindOf(b).el === 'H';
     const material = own(new THREE.MeshStandardMaterial({ color: short ? 0xe2e2e2 : 0x9c9c9c, roughness: 0.5 }));
-    const curves = linkCurves(
+    const curve = linkCurve(
       posOf(a), holeDir(a, bond.ha), radiusOf(a.kind),
       posOf(b), holeDir(b, bond.hb), radiusOf(b.kind),
-      bond.order, bondNormal(a, bond.ha, b, bond.hb),
     );
-    for (const curve of curves) {
-      const tube = own(new THREE.TubeGeometry(curve, 20, bond.order > 1 ? 0.045 : 0.07, 10));
-      const mesh = new THREE.Mesh(tube, material);
-      mesh.userData = { type: 'bond', id: bond.id };
-      root.add(mesh);
-    }
+    const mesh = new THREE.Mesh(own(new THREE.TubeGeometry(curve, 20, 0.07, 10)), material);
+    mesh.userData = { type: 'bond', id: bond.id };
+    root.add(mesh);
     view.bonds.set(bond.id, material);
   }
 
@@ -420,9 +436,9 @@ function showGhost(parent, hole, kindId, spot) {
   const ball = new THREE.Mesh(SPHERE, material);
   ball.position.copy(spot.p);
   ball.scale.setScalar(el.radius);
-  const [curve] = linkCurves(
+  const curve = linkCurve(
     posOf(parent), holeDir(parent, hole), radiusOf(parent.kind),
-    spot.p, KIND[kindId].holes[0].clone().applyQuaternion(spot.q), el.radius, 1,
+    spot.p, KIND[kindId].holes[0].clone().applyQuaternion(spot.q), el.radius,
   );
   const tube = new THREE.TubeGeometry(curve, 12, 0.07, 10);
   ghost.add(ball, new THREE.Mesh(tube, material));
@@ -461,7 +477,7 @@ function fitView() {
 // ---- Interaction ------------------------------------------------------------
 
 let tool = 'add';
-let kindId = 'C4';
+let kindId = 'C';
 let linkFrom = null;
 let lastPointer = null;
 let hoveredHole = null;
@@ -578,10 +594,7 @@ function click(e) {
     showSelection();
     refreshHint();
   } else if (tool === 'order' && hit?.type === 'bond') {
-    change(() => {
-      const bond = model.bonds.find(b => b.id === hit.id);
-      bond.order = (bond.order % 3) + 1;
-    });
+    relink(model.bonds.find(b => b.id === hit.id));
   } else if (tool === 'delete' && hit) {
     change(() => {
       if (atom) deleteAtom(atom.id);
@@ -594,14 +607,14 @@ function click(e) {
 // Dragging an atom turns the whole piece it belongs to about its centre;
 // dragging a bond twists the smaller side about the bond, as with the real kit.
 
-// Atom ids reachable from `id` without crossing `skip`.
-function pieceOf(id, skip = null) {
+// Atom ids reachable from `id` without crossing any link in `skip`.
+function pieceOf(id, skip = new Set()) {
   const ids = new Set([id]);
   const queue = [id];
   while (queue.length) {
     const at = queue.pop();
     for (const b of bondsOf(at)) {
-      if (b === skip) continue;
+      if (skip.has(b)) continue;
       const next = b.a === at ? b.b : b.a;
       if (!ids.has(next)) {
         ids.add(next);
@@ -624,12 +637,14 @@ function startDrag(hit) {
     pivot.divideScalar(ids.size);
   } else {
     const bond = model.bonds.find(b => b.id === hit.id);
-    const sideB = pieceOf(bond.b, bond);
+    const skip = new Set([bond]);
+    const sideB = pieceOf(bond.b, skip);
     if (sideB.has(bond.a)) {
-      flash("Bonds in a ring can't twist");
+      const double = linksBetween(atomById(bond.a), atomById(bond.b)).length > 1;
+      flash(double ? "Double and triple bonds can't twist" : "Bonds in a ring can't twist");
       return null;
     }
-    const sideA = pieceOf(bond.a, bond);
+    const sideA = pieceOf(bond.a, skip);
     const [fixedEnd, movingEnd] = sideB.size <= sideA.size ? [bond.a, bond.b] : [bond.b, bond.a];
     ids = sideB.size <= sideA.size ? sideB : sideA;
     pivot = posOf(atomById(fixedEnd));
@@ -684,16 +699,15 @@ function stretchLink(fromId, e) {
   const hit = pick(e);
   const to = hit?.type === 'atom' && hit.id !== fromId ? atomById(hit.id) : null;
   if (to) placeHalo(hoverHalo, to, BLUE);
-  if (to && bonded(from.id, to.id)) return;
   const end = to ? posOf(to) : pointOnViewPlane(e, posOf(from));
   if (!end) return;
   const toward = end.clone().sub(posOf(from)).normalize();
   const ha = nearestHole(from, freeHoles(from), toward);
   const hb = to ? nearestHole(to, freeHoles(to), toward.clone().negate()) : null;
   if (ha === null || (to && hb === null)) return;
-  const [curve] = linkCurves(
+  const curve = linkCurve(
     posOf(from), holeDir(from, ha), radiusOf(from.kind),
-    end, to ? holeDir(to, hb) : toward.clone().negate(), to ? radiusOf(to.kind) : 0, 1,
+    end, to ? holeDir(to, hb) : toward.clone().negate(), to ? radiusOf(to.kind) : 0,
   );
   const material = new THREE.MeshStandardMaterial({ color: 0x9c9c9c, transparent: true, opacity: 0.6, depthWrite: false });
   const tube = new THREE.TubeGeometry(curve, 20, 0.07, 10);
@@ -793,7 +807,7 @@ function refreshHint() {
     link: linkFrom === null
       ? 'Drag from one atom to another to join them, or click both. Join them again for a double or triple bond'
       : 'Now click the atom to join it to',
-    order: 'Click a bond to make it single, double or triple',
+    order: 'Click a bond to add a link: double, then triple, then back to single',
     delete: 'Click an atom or a bond to remove it',
   };
   $('hint').textContent = hints[tool];
@@ -809,7 +823,7 @@ function refreshReadout() {
     ? order.map(el => el + (counts[el] > 1 ? `<sub>${counts[el]}</sub>` : '')).join('')
     : '&mdash;';
   const mass = model.atoms.reduce((m, a) => m + ELEMENTS[kindOf(a).el].mass, 0);
-  const open = model.atoms.reduce((n, a) => n + openHoles(a), 0);
+  const open = model.atoms.reduce((n, a) => n + freeHoles(a).length, 0);
   $('details').textContent = model.atoms.length
     ? `${mass.toFixed(2)} g/mol · ${model.atoms.length} atom${model.atoms.length > 1 ? 's' : ''} · ` +
       (open ? `${open} open hole${open > 1 ? 's' : ''}` : 'complete')
