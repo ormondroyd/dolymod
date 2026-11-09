@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dolymod</title>
+  <meta name="description" content="A point-and-click ball-and-stick molecular model kit that runs in the browser.">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <h1>Dolymod</h1>
+      <span class="tag">molecular model kit</span>
+    </div>
+    <nav class="tools" aria-label="Tools">
+      <button data-tool="add">Build</button>
+      <button data-tool="link">Link</button>
+      <button data-tool="order">Bond order</button>
+      <button data-tool="delete">Delete</button>
+    </nav>
+    <div class="actions">
+      <button id="fill" title="Put a hydrogen in every free hole">Fill with H</button>
+      <button id="undo" title="Undo (Ctrl/⌘ Z)" disabled>Undo</button>
+      <button id="fit">Fit view</button>
+      <button id="clear">Clear</button>
+    </div>
+  </header>
+  <main>
+    <aside class="palette" aria-label="Atoms">
+      <div id="chips" class="chips"></div>
+    </aside>
+    <section class="stage">
+      <canvas id="scene"></canvas>
+      <p id="hint" class="hint"></p>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div class="readout">
+        <div id="formula" class="formula">&mdash;</div>
+        <div id="details" class="details"></div>
+      </div>
+      <p class="help">Drag to rotate · right-drag to pan · scroll to zoom · Shift-click empty space for a new piece</p>
+    </section>
+  </main>
+</body>
+</html>
