@@ -778,9 +778,11 @@ window.addEventListener('keydown', e => {
 
 // ---- Panels -----------------------------------------------------------------
 
+const holesText = n => `${n} hole${n === 1 ? '' : 's'}`;
+
 const label = id => {
   const name = ELEMENTS[KIND[id].el].name.toLowerCase();
-  return `${/^[aeiou]/.test(name) ? 'an' : 'a'} ${name} (${KIND[id].shape})`;
+  return `${/^[aeiou]/.test(name) ? 'an' : 'a'} ${name} with ${holesText(KIND[id].holes.length)}`;
 };
 
 function refreshHint() {
@@ -894,10 +896,10 @@ for (const kind of KINDS) {
   const chip = document.createElement('button');
   chip.className = 'chip';
   chip.dataset.kind = kind.id;
-  chip.title = `${el.name}: ${n} hole${n > 1 ? 's' : ''}, ${kind.shape}`;
+  chip.title = `${el.name}, ${holesText(n)}`;
   chip.innerHTML =
     `<span class="ball" style="--c:${el.color}" data-n="${n}"></span>` +
-    `<span class="sym">${kind.el} <span class="el-name">${el.name}</span></span><span class="geo">${kind.shape}</span>`;
+    `<span class="sym">${kind.el} <span class="el-name">${el.name}</span></span><span class="geo">${holesText(n)}</span>`;
   chip.addEventListener('click', () => {
     kindId = kind.id;
     setTool('add');
