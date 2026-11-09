@@ -37,7 +37,7 @@ work, because browsers block ES modules on `file://`.)
   methane, ethanol, ethene, vinegar (acetic acid), a benzene ring, a salt crystal or a
   buckyball (C₆₀). Undo takes you back to what you had.
 - **Saving**: your model is kept in the browser as you build, so it comes back after a
-  refresh. **Save** downloads it as a `.dolymod.json` file and **Open** loads one.
+  refresh. **Save** downloads it as a `.dolymod.json` file and **Load** opens one.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
   so this needs an internet connection. Cis/trans and mirror-image forms aren't told

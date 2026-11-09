@@ -277,7 +277,7 @@ function fillHydrogens() {
 
 // ---- Saving -----------------------------------------------------------------
 // The model is kept in this browser as you build, so a refresh brings it back.
-// Save downloads it as a file and Open loads one, for keeping or sharing.
+// Save downloads it as a file and Load opens one, for keeping or sharing.
 
 const STORE = 'dolymod-model';
 let saveTimer;
