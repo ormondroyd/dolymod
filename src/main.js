@@ -10,7 +10,6 @@ import { toSmiles, lookUp } from './naming.js';
 const $ = id => document.getElementById(id);
 const X = new THREE.Vector3(1, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);
-const Z = new THREE.Vector3(0, 0, 1);
 
 // ---- Scene ------------------------------------------------------------------
 
@@ -214,10 +213,7 @@ const ghost = new THREE.Group();
 scene.add(root, ghost);
 
 const SPHERE = new THREE.SphereGeometry(1, 48, 32);
-const HOLE = new THREE.CircleGeometry(0.09, 20);
-const HOLE_DARK = new THREE.MeshBasicMaterial({ color: 0x2a2a2a });
-const HOLE_LIGHT = new THREE.MeshBasicMaterial({ color: 0x8c8c8c });
-const HOLE_HOVER = new THREE.MeshBasicMaterial({ color: 0xffb000 });
+const HOLE_HOVER = new THREE.MeshBasicMaterial({ color: 0xffb000, side: THREE.DoubleSide });
 const BLUE = 0x2f6bff;
 const RED = 0xff3b30;
 
@@ -234,7 +230,63 @@ const view = { holes: new Map(), bonds: new Map() };
 let disposables = [];
 const own = thing => (disposables.push(thing), thing);
 
-const isLight = hex => new THREE.Color(hex).getHSL({}).l > 0.35;
+// ---- Drilled balls ----
+// Each ball's shader cuts a round opening for every hole, and a short bore
+// (a cup turned on a lathe) sits behind it, so you can see into the hole and
+// the links look plugged in. Materials and bores are shared per kind of atom.
+const holeRadius = r => Math.min(0.11, 0.24 * r);
+const ballMaterials = new Map();
+const bores = new Map();
+
+function ballMaterial(kind) {
+  if (!ballMaterials.has(kind.id)) {
+    const el = ELEMENTS[kind.el];
+    const dirs = Array.from({ length: 6 }, (_, i) => kind.holes[i]?.clone() ?? new THREE.Vector3());
+    const material = new THREE.MeshStandardMaterial({ color: el.color, roughness: 0.3 });
+    material.customProgramCacheKey = () => 'drilled';
+    material.onBeforeCompile = shader => {
+      shader.uniforms.holeDirs = { value: dirs };
+      shader.uniforms.holeCount = { value: kind.holes.length };
+      shader.uniforms.holeCos = { value: Math.sqrt(1 - (holeRadius(el.radius) / el.radius) ** 2) };
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vSpherePos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSpherePos = position;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+          varying vec3 vSpherePos;
+          uniform vec3 holeDirs[6];
+          uniform int holeCount;
+          uniform float holeCos;`)
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+          vec3 spherePos = normalize(vSpherePos);
+          for (int i = 0; i < 6; i++) {
+            if (i >= holeCount) break;
+            if (dot(spherePos, holeDirs[i]) > holeCos) discard;
+          }`);
+    };
+    ballMaterials.set(kind.id, material);
+  }
+  return ballMaterials.get(kind.id);
+}
+
+function bore(elId) {
+  if (!bores.has(elId)) {
+    const r = ELEMENTS[elId].radius;
+    const rho = holeRadius(r);
+    const depth = 0.42 * r;
+    const profile = [new THREE.Vector2(0, -depth), new THREE.Vector2(rho, -depth), new THREE.Vector2(rho, 0.006)];
+    bores.set(elId, {
+      geometry: new THREE.LatheGeometry(profile, 24),
+      material: new THREE.MeshStandardMaterial({
+        color: new THREE.Color(ELEMENTS[elId].color).multiplyScalar(0.35),
+        roughness: 0.9,
+        side: THREE.DoubleSide,
+      }),
+      rim: Math.sqrt(r * r - rho * rho),
+    });
+  }
+  return bores.get(elId);
+}
 
 // A link leaves each ball along its hole and bends to meet the other, so
 // strained rings and Link-tool joins curve like the kit's flexible links.
@@ -288,19 +340,19 @@ function rebuild() {
     const group = new THREE.Group();
     group.position.fromArray(atom.p);
     group.quaternion.fromArray(atom.q);
-    const ball = new THREE.Mesh(SPHERE, own(new THREE.MeshStandardMaterial({ color: el.color, roughness: 0.3 })));
+    const ball = new THREE.Mesh(SPHERE, ballMaterial(kind));
     ball.scale.setScalar(el.radius);
     ball.userData = { type: 'atom', id: atom.id };
     group.add(ball);
-    const holeMaterial = isLight(el.color) ? HOLE_DARK : HOLE_LIGHT;
+    const { geometry, material, rim } = bore(kind.el);
     kind.holes.forEach((dir, i) => {
-      const disc = new THREE.Mesh(HOLE, holeMaterial);
-      disc.position.copy(dir).multiplyScalar(el.radius + 0.004);
-      disc.quaternion.setFromUnitVectors(Z, dir);
-      disc.raycast = () => {};
-      disc.userData.base = holeMaterial;
-      group.add(disc);
-      view.holes.set(`${atom.id}:${i}`, disc);
+      const cup = new THREE.Mesh(geometry, material);
+      cup.position.copy(dir).multiplyScalar(rim);
+      cup.quaternion.setFromUnitVectors(Y, dir);
+      cup.raycast = () => {};
+      cup.userData.base = material;
+      group.add(cup);
+      view.holes.set(`${atom.id}:${i}`, cup);
     });
     root.add(group);
   }
@@ -458,9 +510,34 @@ function hover(e) {
     if (atom) placeHalo(hoverHalo, atom, RED);
     else glowBond(hit.id, 0x991a14);
   } else {
+    canvas.style.cursor = 'grab';
     return;
   }
   canvas.style.cursor = 'pointer';
+}
+
+// Put the selected atom where the pointer is: into the nearest free hole of
+// the atom under it, or (when `anywhere`, or the table is empty) loose.
+function attachAt(e, anywhere) {
+  const hit = pick(e);
+  const atom = hit?.type === 'atom' ? atomById(hit.id) : null;
+  if (atom) {
+    const hole = holeUnder(atom, hit.point);
+    if (hole === null) return flash(`That ${ELEMENTS[kindOf(atom).el].name.toLowerCase()} has no free holes`);
+    const spot = placement(atom, hole, kindId);
+    if (spot.blocked) return flash('No room there: another atom is in the way');
+    change(() => {
+      const added = addAtom(kindId, spot.p, spot.q);
+      addBond(atom, hole, added, 0);
+      closeRings(added);
+    });
+  } else if (!hit && (anywhere || !model.atoms.length || e.shiftKey)) {
+    const p = pointOnViewPlane(e);
+    if (!p || overlaps(p, kindId)) return flash('No room there: another atom is in the way');
+    change(() => addAtom(kindId, p, new THREE.Quaternion()));
+  } else if (!hit) {
+    flash('Click an atom to attach to it, or Shift-click empty space to start a new piece');
+  }
 }
 
 function click(e) {
@@ -468,22 +545,7 @@ function click(e) {
   const atom = hit?.type === 'atom' ? atomById(hit.id) : null;
 
   if (tool === 'add') {
-    if (atom) {
-      const hole = holeUnder(atom, hit.point);
-      if (hole === null) return flash(`That ${ELEMENTS[kindOf(atom).el].name.toLowerCase()} has no free holes`);
-      const spot = placement(atom, hole, kindId);
-      if (spot.blocked) return flash('No room there: another atom is in the way');
-      change(() => {
-        const added = addAtom(kindId, spot.p, spot.q);
-        addBond(atom, hole, added, 0);
-        closeRings(added);
-      });
-    } else if (!hit && (!model.atoms.length || e.shiftKey)) {
-      const p = pointOnViewPlane(e);
-      if (p && !overlaps(p, kindId)) change(() => addAtom(kindId, p, new THREE.Quaternion()));
-    } else if (!hit) {
-      flash('Click an atom to attach to it, or Shift-click empty space to start a new piece');
-    }
+    attachAt(e, false);
   } else if (tool === 'link') {
     if (!atom || linkFrom === atom.id) linkFrom = null;
     else if (linkFrom === null) linkFrom = atom.id;
@@ -507,21 +569,134 @@ function click(e) {
   }
 }
 
-let downAt = null;
-canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
-canvas.addEventListener('pointerup', e => {
-  const wasClick = downAt && e.button === 0 && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6;
-  downAt = null;
-  if (wasClick) click(e);
-});
+// ---- Turning pieces and twisting bonds ----
+// Dragging an atom turns the whole piece it belongs to about its centre;
+// dragging a bond twists the smaller side about the bond, as with the real kit.
+
+// Atom ids reachable from `id` without crossing `skip`.
+function pieceOf(id, skip = null) {
+  const ids = new Set([id]);
+  const queue = [id];
+  while (queue.length) {
+    const at = queue.pop();
+    for (const b of bondsOf(at)) {
+      if (b === skip) continue;
+      const next = b.a === at ? b.b : b.a;
+      if (!ids.has(next)) {
+        ids.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return ids;
+}
+
+function startDrag(hit) {
+  let ids;
+  let pivot;
+  let axis = null;
+  let crank = null;
+  if (hit.type === 'atom') {
+    ids = pieceOf(hit.id);
+    pivot = new THREE.Vector3();
+    ids.forEach(id => pivot.add(posOf(atomById(id))));
+    pivot.divideScalar(ids.size);
+  } else {
+    const bond = model.bonds.find(b => b.id === hit.id);
+    const sideB = pieceOf(bond.b, bond);
+    if (sideB.has(bond.a)) {
+      flash("Bonds in a ring can't twist");
+      return null;
+    }
+    const sideA = pieceOf(bond.a, bond);
+    const [fixedEnd, movingEnd] = sideB.size <= sideA.size ? [bond.a, bond.b] : [bond.b, bond.a];
+    ids = sideB.size <= sideA.size ? sideB : sideA;
+    pivot = posOf(atomById(fixedEnd));
+    axis = posOf(atomById(movingEnd)).sub(pivot).normalize();
+    // Dragging across the bond on screen turns it, like a crank handle.
+    const a = pivot.clone().project(camera);
+    const b = pivot.clone().add(axis).project(camera);
+    const sx = (b.x - a.x) * canvas.clientWidth;
+    const sy = -(b.y - a.y) * canvas.clientHeight;
+    const length = Math.hypot(sx, sy);
+    crank = length < 1e-3 ? { x: 1, y: 0 } : { x: -sy / length, y: sx / length };
+  }
+  return {
+    before: JSON.stringify(model),
+    start: [...ids].map(id => {
+      const atom = atomById(id);
+      return { atom, p: posOf(atom), q: quatOf(atom) };
+    }),
+    pivot,
+    axis,
+    crank,
+    up: Y.clone().applyQuaternion(camera.quaternion),
+    right: X.clone().applyQuaternion(camera.quaternion),
+  };
+}
+
+function turn(drag, dx, dy) {
+  const k = 0.01;
+  const rotation = drag.axis
+    ? new THREE.Quaternion().setFromAxisAngle(drag.axis, (dx * drag.crank.x + dy * drag.crank.y) * k)
+    : new THREE.Quaternion().setFromAxisAngle(drag.up, dx * k)
+      .multiply(new THREE.Quaternion().setFromAxisAngle(drag.right, dy * k));
+  for (const { atom, p, q } of drag.start) {
+    atom.p = p.clone().sub(drag.pivot).applyQuaternion(rotation).add(drag.pivot).toArray();
+    atom.q = rotation.clone().multiply(q).toArray();
+  }
+  rebuild();
+}
+
+function endDrag(drag) {
+  if (!drag || JSON.stringify(model) === drag.before) return;
+  undoStack.push(drag.before);
+  $('undo').disabled = false;
+}
+
+// A press on an atom or bond belongs to us, not the orbit controls, so this
+// listens in the capture phase on the canvas's parent, ahead of OrbitControls.
+let grab = null;
+canvas.parentElement.addEventListener('pointerdown', e => {
+  if (e.target !== canvas || e.button !== 0) return;
+  const hit = pick(e);
+  grab = { x: e.clientX, y: e.clientY, hit, drag: undefined };
+  if (hit) {
+    controls.enabled = false;
+    canvas.setPointerCapture(e.pointerId);
+  }
+}, { capture: true });
+
 canvas.addEventListener('pointermove', e => {
-  if (e.buttons) {
+  if (grab?.hit) {
+    const dx = e.clientX - grab.x;
+    const dy = e.clientY - grab.y;
+    if (grab.drag === undefined) {
+      if (Math.hypot(dx, dy) < 6) return;
+      lastPointer = null;
+      clearHover();
+      grab.drag = startDrag(grab.hit);
+    }
+    if (grab.drag) turn(grab.drag, dx, dy);
+    canvas.style.cursor = 'grabbing';
+  } else if (e.buttons) {
     lastPointer = null;
     clearHover();
   } else {
     hover(e);
   }
 });
+
+function release(e, cancelled) {
+  if (!grab) return;
+  const { x, y, drag } = grab;
+  grab = null;
+  controls.enabled = true;
+  if (drag !== undefined) endDrag(drag);
+  else if (!cancelled && Math.hypot(e.clientX - x, e.clientY - y) < 6) click(e);
+}
+canvas.addEventListener('pointerup', e => release(e, false));
+canvas.addEventListener('pointercancel', e => release(e, true));
 canvas.addEventListener('pointerleave', () => {
   lastPointer = null;
   clearHover();
@@ -664,7 +839,50 @@ for (const kind of KINDS) {
     kindId = kind.id;
     setTool('add');
   });
+  dragFromBox(chip, kind);
   $('chips').append(chip);
+}
+
+// Drag a chip out of the box: the preview follows the pointer over the model,
+// and letting go drops the atom into that hole, or loose on empty space.
+function dragFromBox(chip, kind) {
+  let start = null;
+  let floating = null;
+  const overCanvas = e => {
+    const r = canvas.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  };
+  chip.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    start = { x: e.clientX, y: e.clientY };
+    chip.setPointerCapture(e.pointerId);
+  });
+  chip.addEventListener('pointermove', e => {
+    if (!start) return;
+    if (!floating) {
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) return;
+      kindId = kind.id;
+      setTool('add');
+      floating = chip.querySelector('.ball').cloneNode();
+      floating.classList.add('dragging');
+      document.body.append(floating);
+    }
+    floating.style.left = `${e.clientX}px`;
+    floating.style.top = `${e.clientY}px`;
+    if (overCanvas(e)) {
+      hover(e);
+    } else {
+      lastPointer = null;
+      clearHover();
+    }
+  });
+  const finish = (e, drop) => {
+    if (floating && drop && overCanvas(e)) attachAt(e, true);
+    floating?.remove();
+    floating = start = null;
+  };
+  chip.addEventListener('pointerup', e => finish(e, true));
+  chip.addEventListener('pointercancel', e => finish(e, false));
 }
 
 document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));

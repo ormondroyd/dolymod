@@ -112,6 +112,16 @@ main { flex: 1; display: flex; min-height: 0; }
   color: var(--bg);
   background: var(--ink);
 }
+.chip { touch-action: pan-y; }
+.ball.dragging {
+  position: fixed;
+  z-index: 10;
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+  transform: translate(-130%, -130%);
+  opacity: 0.9;
+}
 .sym { font-size: 15px; font-weight: 650; line-height: 1.1; }
 .geo { font-size: 11px; color: var(--muted); line-height: 1.2; }
 .chip[aria-pressed="true"] .geo { color: inherit; opacity: 0.85; }
@@ -182,6 +192,7 @@ main { flex: 1; display: flex; min-height: 0; }
     border-top: 1px solid var(--line);
   }
   .chips { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: max-content; }
+  .chip { touch-action: pan-x; }
   .readout { left: 16px; bottom: 12px; padding: 8px 12px; }
   .formula { font-size: 18px; }
 }

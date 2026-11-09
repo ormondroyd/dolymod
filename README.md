@@ -20,8 +20,12 @@ work, because browsers block ES modules on `file://`.)
 
 - **Build**: pick an atom from the box, then click an atom in the model. The new atom
   snaps into the nearest free hole (it's highlighted, with a preview, before you click).
-  On an empty table, click anywhere to place the first atom. Shift-click empty space to
-  start a second piece.
+  Or drag an atom out of the box and drop it onto a hole. On an empty table, click
+  anywhere to place the first atom. To start a second piece, drop an atom on empty
+  space or Shift-click there.
+- **Turn and twist**: drag an atom to turn the whole piece it belongs to. Drag a bond to
+  twist one side of the molecule around it, for staggered and eclipsed forms (bonds in
+  a ring can't twist). Drag empty space to turn the view.
 - **Link**: click two atoms to join them with a flexible link. Use it to close strained
   rings such as cyclopropane. Rings that fit exactly, such as benzene or chair
   cyclohexane, close on their own when the last atom goes in.
@@ -33,7 +37,7 @@ work, because browsers block ES modules on `file://`.)
   so this needs an internet connection. If an atom has the wrong number of bonds (a
   trigonal carbon with three single bonds, say), it tells you instead. Cis/trans and
   mirror-image forms aren't told apart yet.
-- Drag to rotate, right-drag to pan, scroll to zoom. Ctrl/⌘ Z undoes.
+- Right-drag to pan, scroll to zoom. Ctrl/⌘ Z undoes.
 
 ## The parts box
 
