@@ -28,6 +28,11 @@ work, because browsers block ES modules on `file://`.)
 - **Bond order**: click a bond to cycle single, double, triple.
 - **Delete**: click an atom or a bond. Deleting an atom also removes the hydrogens on it.
 - **Fill with H** puts a hydrogen in every free hole.
+- **Naming**: once every hole is filled, the panel names the molecule. The model is
+  written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
+  so this needs an internet connection. If an atom has the wrong number of bonds (a
+  trigonal carbon with three single bonds, say), it tells you instead. Cis/trans and
+  mirror-image forms aren't told apart yet.
 - Drag to rotate, right-drag to pan, scroll to zoom. Ctrl/⌘ Z undoes.
 
 ## The parts box
@@ -36,9 +41,9 @@ work, because browsers block ES modules on `file://`.)
 | --- | --- |
 | H, F, Cl, Br, I | 1 |
 | C | 4 tetrahedral, 3 trigonal, 2 linear |
-| N | 3 pyramidal, 2 bent (120°), 4 tetrahedral |
+| N | 3 pyramidal, 2 bent (120°), 4 tetrahedral, 1 |
 | O | 2 bent, 1 |
-| S | 2 bent, 6 octahedral |
+| S | 2 bent, 4 tetrahedral, 6 octahedral |
 | P | 4 tetrahedral, 5 trigonal bipyramidal |
 
 ## Code
@@ -46,6 +51,7 @@ work, because browsers block ES modules on `file://`.)
 - `index.html`, `style.css`: the page.
 - `src/kit.js`: element colours and sizes, and the hole directions for each kind of atom.
 - `src/main.js`: the model, the placement rules, rendering and interaction.
+- `src/naming.js`: the valence check, SMILES writer and PubChem lookup.
 
 Uses [three.js](https://threejs.org) 0.160 from a CDN.
 

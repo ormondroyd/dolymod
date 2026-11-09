@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { ELEMENTS, KINDS, KIND } from './kit.js';
+import { toSmiles, lookUp } from './naming.js';
 
 const $ = id => document.getElementById(id);
 const X = new THREE.Vector3(1, 0, 0);
@@ -539,13 +540,16 @@ window.addEventListener('keydown', e => {
 
 // ---- Panels -----------------------------------------------------------------
 
-const label = id => `${ELEMENTS[KIND[id].el].name.toLowerCase()} (${KIND[id].shape})`;
+const label = id => {
+  const name = ELEMENTS[KIND[id].el].name.toLowerCase();
+  return `${/^[aeiou]/.test(name) ? 'an' : 'a'} ${name} (${KIND[id].shape})`;
+};
 
 function refreshHint() {
   const hints = {
     add: model.atoms.length
-      ? `Click an atom to snap a ${label(kindId)} into its nearest free hole`
-      : `Click anywhere to place a ${label(kindId)}`,
+      ? `Click an atom to snap ${label(kindId)} into its nearest free hole`
+      : `Click anywhere to place ${label(kindId)}`,
     link: linkFrom === null
       ? 'Click two atoms to join them with a flexible link, for closing rings'
       : 'Now click the atom to join it to',
@@ -570,6 +574,61 @@ function refreshReadout() {
     ? `${mass.toFixed(2)} g/mol · ${model.atoms.length} atom${model.atoms.length > 1 ? 's' : ''} · ` +
       (open ? `${open} open hole${open > 1 ? 's' : ''}` : 'every hole filled')
     : 'Pick an atom from the box to start';
+  refreshName(open);
+}
+
+// The name comes from PubChem, looked up once the model is a whole molecule.
+// `namedSmiles` skips the lookup when an edit (a twist, say) keeps the structure.
+let namedSmiles = null;
+let nameTimer;
+
+function refreshName(open) {
+  const result = !model.atoms.length ? { problem: '' }
+    : open ? { problem: 'Fill the open holes to name it' }
+    : toSmiles(model.atoms.map(a => ({ id: a.id, el: kindOf(a).el })), model.bonds);
+  if (result.smiles === namedSmiles && namedSmiles) return;
+  clearTimeout(nameTimer);
+  namedSmiles = result.smiles ?? null;
+  if (!namedSmiles) return showName(result.problem, { status: true });
+
+  const smiles = namedSmiles;
+  showName('Looking up the name…', { status: true });
+  nameTimer = setTimeout(() => {
+    lookUp(smiles).then(
+      hit => {
+        if (namedSmiles !== smiles) return;
+        if (hit) showName(hit.title, { iupac: hit.iupac, cid: hit.cid });
+        else showName('PubChem has no compound like this', { status: true, smiles });
+      },
+      () => {
+        if (namedSmiles !== smiles) return;
+        namedSmiles = null;
+        showName("Couldn't reach PubChem to name it", { status: true, smiles });
+      },
+    );
+  }, 400);
+}
+
+function showName(text, { status = false, iupac = '', cid = null, smiles = '' } = {}) {
+  const name = $('name');
+  name.textContent = text;
+  name.classList.toggle('status', status);
+  name.hidden = !text;
+
+  const parts = [];
+  if (iupac && iupac.toLowerCase() !== text.toLowerCase()) parts.push(`IUPAC: ${iupac}`);
+  if (cid) {
+    const link = document.createElement('a');
+    link.href = `https://pubchem.ncbi.nlm.nih.gov/compound/${cid}`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = 'PubChem';
+    parts.push(link);
+  }
+  if (smiles) parts.push(`SMILES ${smiles}`);
+  const sub = $('subname');
+  sub.replaceChildren(...parts.flatMap((part, i) => (i ? [' · ', part] : [part])));
+  sub.hidden = !parts.length;
 }
 
 let toastTimer;

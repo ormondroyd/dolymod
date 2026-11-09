@@ -14,17 +14,19 @@ const OCTAHEDRAL = [v(1, 0, 0), v(-1, 0, 0), v(0, 1, 0), v(0, -1, 0), v(0, 0, 1)
 const BIPYRAMIDAL = [...TRIGONAL, v(0, 0, 1), v(0, 0, -1)];
 const SINGLE = [v(1, 0, 0)];
 
+// `valence` lists the bond totals (double bonds count 2) that make a neutral
+// atom; an atom with `cation` bonds is written as a +1 ion (ammonium).
 export const ELEMENTS = {
-  H: { name: 'Hydrogen', color: '#f3f3ef', radius: 0.36, mass: 1.008 },
-  C: { name: 'Carbon', color: '#262626', radius: 0.5, mass: 12.011 },
-  N: { name: 'Nitrogen', color: '#2f5fd0', radius: 0.5, mass: 14.007 },
-  O: { name: 'Oxygen', color: '#d42a2a', radius: 0.5, mass: 15.999 },
-  F: { name: 'Fluorine', color: '#a8dc5c', radius: 0.44, mass: 18.998 },
-  P: { name: 'Phosphorus', color: '#9a5bd1', radius: 0.55, mass: 30.974 },
-  S: { name: 'Sulfur', color: '#f2c318', radius: 0.55, mass: 32.06 },
-  Cl: { name: 'Chlorine', color: '#2e9e4a', radius: 0.5, mass: 35.45 },
-  Br: { name: 'Bromine', color: '#8a2b1c', radius: 0.56, mass: 79.904 },
-  I: { name: 'Iodine', color: '#4a2370', radius: 0.6, mass: 126.904 },
+  H: { name: 'Hydrogen', color: '#f3f3ef', radius: 0.36, mass: 1.008, valence: [1] },
+  C: { name: 'Carbon', color: '#262626', radius: 0.5, mass: 12.011, valence: [4] },
+  N: { name: 'Nitrogen', color: '#2f5fd0', radius: 0.5, mass: 14.007, valence: [3], cation: 4 },
+  O: { name: 'Oxygen', color: '#d42a2a', radius: 0.5, mass: 15.999, valence: [2] },
+  F: { name: 'Fluorine', color: '#a8dc5c', radius: 0.44, mass: 18.998, valence: [1] },
+  P: { name: 'Phosphorus', color: '#9a5bd1', radius: 0.55, mass: 30.974, valence: [3, 5], cation: 4 },
+  S: { name: 'Sulfur', color: '#f2c318', radius: 0.55, mass: 32.06, valence: [2, 4, 6] },
+  Cl: { name: 'Chlorine', color: '#2e9e4a', radius: 0.5, mass: 35.45, valence: [1] },
+  Br: { name: 'Bromine', color: '#8a2b1c', radius: 0.56, mass: 79.904, valence: [1] },
+  I: { name: 'Iodine', color: '#4a2370', radius: 0.6, mass: 126.904, valence: [1] },
 };
 
 // A new atom always attaches by its first hole. `planar` kinds keep their
@@ -37,9 +39,11 @@ export const KINDS = [
   { id: 'N3', el: 'N', holes: TETRAHEDRAL.slice(0, 3), shape: 'pyramidal' },
   { id: 'N2', el: 'N', holes: TRIGONAL.slice(0, 2), shape: 'bent 120°', planar: true },
   { id: 'N4', el: 'N', holes: TETRAHEDRAL, shape: 'tetrahedral' },
+  { id: 'N1', el: 'N', holes: SINGLE, shape: 'terminal' },
   { id: 'O2', el: 'O', holes: TETRAHEDRAL.slice(0, 2), shape: 'bent' },
   { id: 'O1', el: 'O', holes: SINGLE, shape: 'terminal' },
   { id: 'S2', el: 'S', holes: TETRAHEDRAL.slice(0, 2), shape: 'bent' },
+  { id: 'S4', el: 'S', holes: TETRAHEDRAL, shape: 'tetrahedral' },
   { id: 'S6', el: 'S', holes: OCTAHEDRAL, shape: 'octahedral' },
   { id: 'P4', el: 'P', holes: TETRAHEDRAL, shape: 'tetrahedral' },
   { id: 'P5', el: 'P', holes: BIPYRAMIDAL, shape: 'bipyramidal' },
