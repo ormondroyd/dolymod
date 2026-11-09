@@ -138,6 +138,7 @@ const angleGap = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))
 
 // How far to spin a new atom about its bond: as far from clashing with the
 // parent's other holes as it will go, which gives the staggered conformation.
+// Salt-crystal atoms instead line their holes up square, to build a lattice.
 function twistAngle(parent, hole, kind, q1, axis) {
   const parentDirs = kindOf(parent).holes
     .filter((_, i) => i !== hole)
@@ -145,6 +146,7 @@ function twistAngle(parent, hole, kind, q1, axis) {
   const alphas = anglesAround(parentDirs, axis);
   const betas = anglesAround(kind.holes.slice(1).map(d => d.clone().applyQuaternion(q1)), axis);
   if (!alphas.length || !betas.length) return 0;
+  if (kindOf(parent).crystal && kind.crystal) return alphas[0] - betas[0];
   let best = 0;
   let bestGap = -1;
   for (let deg = 0; deg < 360; deg++) {
@@ -204,20 +206,6 @@ function link(a, b) {
   });
 }
 
-// Bond type: each click adds a link between the two atoms, up to three, then
-// goes back to one.
-function relink(bond) {
-  const a = atomById(bond.a);
-  const b = atomById(bond.b);
-  const links = linksBetween(a, b);
-  if (links.length < 3 && freeHoles(a).length && freeHoles(b).length) return link(a, b);
-  if (links.length === 1) return flash('Both atoms need a free hole for another link');
-  change(() => {
-    const extra = new Set(links.slice(1));
-    model.bonds = model.bonds.filter(l => !extra.has(l));
-  });
-}
-
 // When two atoms share two or three links, turn the lighter side of the
 // molecule so the links sit evenly around the line between the atoms and bend
 // like the kit's flexible links. In a ring nothing can turn, so the links just
@@ -263,14 +251,16 @@ function settle(a, b) {
 function fillHydrogens() {
   const filled = change(() => {
     for (const atom of [...model.atoms]) {
-      if (kindOf(atom).el === 'H') continue;
+      if (kindOf(atom).el === 'H' || kindOf(atom).crystal) continue;
       for (const h of freeHoles(atom)) {
         const spot = placement(atom, h, 'H');
         if (!spot.blocked) addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
       }
     }
   });
-  if (!filled) flash('No free holes to fill');
+  if (filled) return;
+  const salty = model.atoms.some(a => kindOf(a).crystal && freeHoles(a).length);
+  flash(salty ? "Salt crystal atoms don't take hydrogen" : 'No free holes to fill');
 }
 
 // ---- Rendering --------------------------------------------------------------
@@ -541,8 +531,6 @@ function hover(e) {
     showGhost(atom, hole, kindId, placement(atom, hole, kindId));
   } else if (tool === 'link' && atom) {
     placeHalo(hoverHalo, atom, BLUE);
-  } else if (tool === 'order' && hit.type === 'bond') {
-    glowBond(hit.id, 0x2a4a99);
   } else if (tool === 'delete') {
     if (atom) placeHalo(hoverHalo, atom, RED);
     else glowBond(hit.id, 0x991a14);
@@ -560,7 +548,7 @@ function attachAt(e, anywhere) {
   const atom = hit?.type === 'atom' ? atomById(hit.id) : null;
   if (atom) {
     const hole = holeUnder(atom, hit.point);
-    if (hole === null) return flash(`That ${ELEMENTS[kindOf(atom).el].name.toLowerCase()} has no free holes`);
+    if (hole === null) return flash(`That ${nameOf(kindOf(atom)).toLowerCase()} has no free holes`);
     const spot = placement(atom, hole, kindId);
     if (spot.blocked) return flash('No room there: another atom is in the way');
     change(() => {
@@ -593,8 +581,6 @@ function click(e) {
     }
     showSelection();
     refreshHint();
-  } else if (tool === 'order' && hit?.type === 'bond') {
-    relink(model.bonds.find(b => b.id === hit.id));
   } else if (tool === 'delete' && hit) {
     change(() => {
       if (atom) deleteAtom(atom.id);
@@ -794,8 +780,10 @@ window.addEventListener('keydown', e => {
 
 const holesText = n => `${n} hole${n === 1 ? '' : 's'}`;
 
+const nameOf = kind => kind.name ?? ELEMENTS[kind.el].name;
+
 const label = id => {
-  const name = ELEMENTS[KIND[id].el].name.toLowerCase();
+  const name = nameOf(KIND[id]).toLowerCase();
   return `${/^[aeiou]/.test(name) ? 'an' : 'a'} ${name} with ${holesText(KIND[id].holes.length)}`;
 };
 
@@ -807,8 +795,7 @@ function refreshHint() {
     link: linkFrom === null
       ? 'Drag from one atom to another to join them, or click both. Join them again for a double or triple bond'
       : 'Now click the atom to join it to',
-    order: 'Click a bond to add a link: double, then triple, then back to single',
-    delete: 'Click an atom or a bond to remove it',
+    delete: 'Click an atom or a link to remove it',
   };
   $('hint').textContent = hints[tool];
 }
@@ -816,9 +803,19 @@ function refreshHint() {
 function refreshReadout() {
   const counts = {};
   for (const a of model.atoms) counts[kindOf(a).el] = (counts[kindOf(a).el] || 0) + 1;
-  // Hill order: carbon, then hydrogen, then the rest alphabetically.
-  const rest = Object.keys(counts).filter(el => !(counts.C && (el === 'C' || el === 'H'))).sort();
-  const order = counts.C ? ['C', ...(counts.H ? ['H'] : []), ...rest] : rest;
+  let order;
+  if (isSalt()) {
+    // A crystal is written as its simplest ratio, sodium first: NaCl.
+    const gcd = (x, y) => (y ? gcd(y, x % y) : x);
+    const g = gcd(counts.Na, counts.Cl);
+    counts.Na /= g;
+    counts.Cl /= g;
+    order = ['Na', 'Cl'];
+  } else {
+    // Hill order: carbon, then hydrogen, then the rest alphabetically.
+    const rest = Object.keys(counts).filter(el => !(counts.C && (el === 'C' || el === 'H'))).sort();
+    order = counts.C ? ['C', ...(counts.H ? ['H'] : []), ...rest] : rest;
+  }
   $('formula').innerHTML = order.length
     ? order.map(el => el + (counts[el] > 1 ? `<sub>${counts[el]}</sub>` : '')).join('')
     : '&mdash;';
@@ -836,7 +833,18 @@ function refreshReadout() {
 let namedSmiles = null;
 let nameTimer;
 
+// A model made only of salt-crystal atoms, with both sodium and chloride in it.
+function isSalt() {
+  const kinds = model.atoms.map(kindOf);
+  return kinds.length > 0 && kinds.every(k => k.crystal) && kinds.some(k => k.el === 'Na') && kinds.some(k => k.el === 'Cl');
+}
+
 function refreshName(open) {
+  if (isSalt()) {
+    clearTimeout(nameTimer);
+    namedSmiles = null;
+    return showName('Sodium chloride (salt) crystal');
+  }
   const result = !model.atoms.length ? { problem: '' }
     : open ? { problem: 'Fill the open holes to name it' }
     : toSmiles(model.atoms.map(a => ({ id: a.id, el: kindOf(a).el })), model.bonds);
@@ -904,22 +912,35 @@ function setTool(next) {
   refreshHint();
 }
 
+const sections = new Map();
 for (const kind of KINDS) {
+  const group = kind.group ?? 'Atoms';
+  if (!sections.has(group)) {
+    const section = document.createElement('section');
+    section.className = 'box-group';
+    const heading = document.createElement('h2');
+    heading.textContent = group;
+    const chips = document.createElement('div');
+    chips.className = 'chips';
+    section.append(heading, chips);
+    $('box').append(section);
+    sections.set(group, chips);
+  }
   const el = ELEMENTS[kind.el];
   const n = kind.holes.length;
   const chip = document.createElement('button');
   chip.className = 'chip';
   chip.dataset.kind = kind.id;
-  chip.title = `${el.name}, ${holesText(n)}`;
+  chip.title = `${nameOf(kind)}, ${holesText(n)}`;
   chip.innerHTML =
     `<span class="ball" style="--c:${el.color}" data-n="${n}"></span>` +
-    `<span class="sym">${kind.el} <span class="el-name">${el.name}</span></span><span class="geo">${holesText(n)}</span>`;
+    `<span class="sym">${kind.el} <span class="el-name">${nameOf(kind)}</span></span><span class="geo">${holesText(n)}</span>`;
   chip.addEventListener('click', () => {
     kindId = kind.id;
     setTool('add');
   });
   dragFromBox(chip, kind);
-  $('chips').append(chip);
+  sections.get(group).append(chip);
 }
 
 // Drag a chip out of the box: the preview follows the pointer over the model,

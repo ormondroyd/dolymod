@@ -30,8 +30,8 @@ work, because browsers block ES modules on `file://`.)
   link. Use it to close strained rings such as cyclopropane. Join the same two atoms
   again to make the bond double, then triple. A ring that fits exactly, such as chair
   cyclohexane, closes on its own when the last atom goes in.
-- **Bond type**: click a bond to add another link: double, then triple, then back to single.
-- **Delete**: click an atom or a bond. Deleting an atom also removes the hydrogens on it.
+- **Delete**: click an atom or a link. Deleting an atom also removes the hydrogens on it;
+  deleting one link of a double bond leaves a single bond.
 - **Fill with H** puts a hydrogen in every free hole.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
@@ -41,14 +41,22 @@ work, because browsers block ES modules on `file://`.)
 
 ## The parts box
 
-Every ball has one hole for each bond its element makes, as in the real kit.
+Every ball has one hole for each bond it makes, as in the real kit. The box has three
+sections:
 
-| Atom | Holes |
-| --- | --- |
-| Carbon | 4 |
-| Nitrogen, phosphorus | 3 |
-| Oxygen, sulfur | 2 |
-| Hydrogen, fluorine, chlorine, bromine, iodine | 1 |
+| Section | Atom | Holes |
+| --- | --- | --- |
+| Atoms | Carbon, silicon | 4 |
+| | Nitrogen, phosphorus, boron | 3 |
+| | Oxygen, sulfur | 2 |
+| | Hydrogen, fluorine, chlorine, bromine, iodine | 1 |
+| More holes | Sulfur | 6 |
+| | Phosphorus | 5 |
+| Salt crystal | Sodium, chloride | 6, set square |
+
+Salt-crystal atoms line up square so they build a sodium chloride lattice. A model made
+only of them is named as a salt crystal, with its formula as the simplest ratio (NaCl),
+and Fill with H leaves them alone.
 
 A double bond is two flexible links between the same two atoms, each in its own hole,
 and a triple bond is three. The atoms turn so the links bend evenly side by side.
