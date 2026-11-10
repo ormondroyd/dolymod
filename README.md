@@ -30,8 +30,9 @@ work, because browsers block ES modules on `file://`.)
   link. Use it to close strained rings such as cyclopropane. Join the same two atoms
   again to make the bond double, then triple. A ring that fits exactly, such as chair
   cyclohexane, closes on its own when the last atom goes in.
-- **Delete**: click an atom or a link. Deleting an atom also removes the hydrogens on it;
-  deleting one link of a double bond leaves a single bond.
+- **Delete**: a mode that turns the view's edge red. Hovering an atom or link (or pressing it on a
+  touchscreen) shows in red everything a click would remove: an atom with its hydrogens and
+  links, or one link. Deleting one link of a double bond leaves a single bond. Undo puts things back.
 - **Fill with H** puts a hydrogen in every free hole.
 - **Examples**: load one of 61 ready-made models, in ten groups: gases, everyday
   chemicals (water to indigo), food and flavours (caffeine, chocolate's theobromine,
@@ -47,10 +48,9 @@ work, because browsers block ES modules on `file://`.)
   what hold ice together. A model of several copies of one molecule shows its formula
   as, say, 21 × H₂O.
 - **Saving**: your model is kept in the browser as you build, so it comes back after a
-  refresh. **Save** keeps a named copy in this browser (it suggests the molecule's
-  name) and **Load** lists your saved models, newest first, to open or delete. Saves
-  stay on that computer; to move one elsewhere, use **Download as a file** in Save and
-  **Open a file** in Load (`.dolymod.json`).
+  refresh. **Save** writes it to a `.json` file named after the molecule: in Chrome, Edge
+  and on Chromebooks you choose where; other browsers put it in Downloads. **Load** opens
+  a saved file.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
   so this needs an internet connection. Cis/trans and mirror-image forms aren't told
@@ -85,7 +85,8 @@ and a triple bond is three. The atoms turn so the links bend evenly side by side
 
 ## Code
 
-- `index.html`, `style.css`: the page.
+- `index.html`, `style.css`: the page. `teachers.html`: notes for teachers (curriculum
+  links, activities, privacy).
 - `src/kit.js`: element colours and sizes, and the hole directions for each atom.
 - `src/main.js`: the model, the placement rules, rendering and interaction.
 - `src/naming.js`: the SMILES writer and PubChem lookup.

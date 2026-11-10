@@ -113,9 +113,13 @@ const linksBetween = (a, b) =>
 const holeAt = (l, atom) => (l.a === atom.id ? l.ha : l.hb);
 
 // Removing an atom also removes anything that only hung off it (its hydrogens).
-function deleteAtom(id) {
+function doomedBy(id) {
   const loose = bondsOf(id).map(b => (b.a === id ? b.b : b.a)).filter(n => bondsOf(n).length === 1);
-  const doomed = new Set([id, ...loose]);
+  return new Set([id, ...loose]);
+}
+
+function deleteAtom(id) {
+  const doomed = doomedBy(id);
   model.atoms = model.atoms.filter(a => !doomed.has(a.id));
   model.bonds = model.bonds.filter(b => !doomed.has(b.a) && !doomed.has(b.b));
 }
@@ -278,8 +282,7 @@ function fillHydrogens() {
 
 // ---- Saving -----------------------------------------------------------------
 // The model is kept in this browser as you build, so a refresh brings it back.
-// Save keeps a named copy in this browser and Load lists them; a model can
-// also go to a file and back, to move it to another computer.
+// Save writes it to a file and Load opens one.
 
 const STORE = 'dolymod-model';
 let saveTimer;
@@ -320,83 +323,38 @@ function readModel(data) {
   };
 }
 
-const SAVES = 'dolymod-saves';
-
 // What to call the model: its name if it has one, else its formula.
 const modelName = () => (!$('name').classList.contains('status') && $('name').textContent) || $('formula').textContent;
 
-function readSaves() {
-  try {
-    const saves = JSON.parse(localStorage.getItem(SAVES));
-    return Array.isArray(saves) ? saves : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeSaves(saves) {
-  try {
-    localStorage.setItem(SAVES, JSON.stringify(saves));
-    return true;
-  } catch {
-    flash("Couldn't save: this browser's storage is full or switched off");
-    return false;
-  }
-}
-
-// Saving under a name that's already used replaces that save.
-function saveHere(name) {
-  const saves = readSaves().filter(s => s.name !== name);
-  saves.unshift({ name, savedAt: Date.now(), model });
-  if (writeSaves(saves)) flash(`Saved “${name}” in this browser`);
-}
-
-function showSaves() {
-  const saves = readSaves();
-  const when = time => new Date(time).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  $('save-list').replaceChildren(...saves.map(save => {
-    const item = document.createElement('li');
-    const open = document.createElement('button');
-    open.className = 'saved';
-    open.type = 'button';
-    const name = document.createElement('span');
-    name.textContent = save.name;
-    const about = document.createElement('small');
-    about.textContent = `${save.model?.atoms?.length ?? 0} atoms · ${when(save.savedAt)}`;
-    open.append(name, about);
-    open.addEventListener('click', () => {
-      const saved = readModel(save.model);
-      if (!saved) return flash('That save is damaged and can’t be loaded');
-      $('load-dialog').close();
-      change(() => { model = saved; });
-      fitView();
-    });
-    const forget = document.createElement('button');
-    forget.className = 'forget';
-    forget.type = 'button';
-    forget.textContent = '×';
-    forget.title = `Delete “${save.name}”`;
-    forget.setAttribute('aria-label', forget.title);
-    forget.addEventListener('click', () => {
-      if (!confirm(`Delete “${save.name}” from this browser? This can't be undone.`)) return;
-      if (writeSaves(readSaves().filter(s => s.name !== save.name || s.savedAt !== save.savedAt))) showSaves();
-    });
-    item.append(open, forget);
-    return item;
-  }));
-  $('no-saves').hidden = saves.length > 0;
-}
-
-function saveFile() {
+// Save to a file. Where the browser allows it (Chrome, Edge, Chromebooks) this
+// opens the computer's own Save box to choose a folder and name; elsewhere
+// the file goes to the Downloads folder.
+async function saveFile() {
   if (!model.atoms.length) return flash('Build something first');
   const slug = modelName().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'molecule';
-  const file = new Blob([JSON.stringify({ app: 'dolymod', version: 1, model })], { type: 'application/json' });
+  const name = `${slug}.json`;
+  const text = JSON.stringify({ app: 'dolymod', version: 1, model });
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: name,
+        types: [{ description: 'Molecule model', accept: { 'application/json': ['.json'] } }],
+      });
+      const writer = await handle.createWritable();
+      await writer.write(text);
+      await writer.close();
+      flash(`Saved ${handle.name}`);
+    } catch (error) {
+      if (error.name !== 'AbortError') flash("Couldn't save the file");
+    }
+    return;
+  }
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(file);
-  link.download = `${slug}.dolymod.json`;
+  link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  flash(`Saved ${link.download}`);
+  flash(`Saved ${name} to your Downloads folder`);
 }
 
 async function openFile(file) {
@@ -588,7 +546,13 @@ const makeHalo = () => {
 const hoverHalo = makeHalo();
 const selectHalo = makeHalo();
 
-const view = { holes: new Map(), bonds: new Map() };
+const view = { holes: new Map(), bonds: new Map(), paths: new Map() };
+
+// Delete mode marks everything a click would remove in red.
+const marks = new THREE.Group();
+scene.add(marks);
+const MARK_MATERIAL = new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.45, depthWrite: false });
+const MARK_RIM = new THREE.MeshBasicMaterial({ color: RED, side: THREE.BackSide });
 let disposables = [];
 const own = thing => (disposables.push(thing), thing);
 
@@ -669,6 +633,7 @@ function rebuild() {
   root.clear();
   view.holes.clear();
   view.bonds.clear();
+  view.paths.clear();
 
   for (const atom of model.atoms) {
     const kind = kindOf(atom);
@@ -706,6 +671,7 @@ function rebuild() {
     mesh.userData = { type: 'bond', id: bond.id };
     root.add(mesh);
     view.bonds.set(bond.id, material);
+    view.paths.set(bond.id, curve.getPoints(8));
   }
 
   for (const [from, to] of hydrogenBonds()) {
@@ -813,10 +779,21 @@ function aim(e) {
   raycaster.setFromCamera(ndcOf(e), camera);
 }
 
+// What's under the pointer. Links are thin, so a miss that passes close to
+// one still counts as that link.
 function pick(e) {
   aim(e);
   const hit = raycaster.intersectObjects(root.children, true).find(h => h.object.userData.type);
-  return hit ? { ...hit.object.userData, point: hit.point } : null;
+  if (hit) return { ...hit.object.userData, point: hit.point };
+  let near = null;
+  for (const [id, points] of view.paths) {
+    for (let k = 1; k < points.length; k++) {
+      const point = new THREE.Vector3();
+      const gap = raycaster.ray.distanceSqToSegment(points[k - 1], points[k], null, point);
+      if (gap < 0.2 * 0.2 && (!near || gap < near.gap)) near = { type: 'bond', id, point, gap };
+    }
+  }
+  return near && { type: near.type, id: near.id, point: near.point };
 }
 
 // Point under the pointer on the plane facing the camera through `through`.
@@ -831,8 +808,9 @@ const holeUnder = (atom, point) => nearestHole(atom, freeHoles(atom), point.clon
 
 function clearHover() {
   hoverHalo.visible = false;
+  marks.clear();
   if (hoveredHole) hoveredHole.material = hoveredHole.userData.base;
-  if (hoveredBond) hoveredBond.emissive.setHex(0);
+  for (const material of [hoveredBond ?? []].flat()) material.emissive.setHex(0);
   hoveredHole = hoveredBond = null;
   clearGhost();
   canvas.style.cursor = '';
@@ -858,13 +836,37 @@ function hover(e) {
   } else if (tool === 'link' && atom) {
     placeHalo(hoverHalo, atom, BLUE);
   } else if (tool === 'delete') {
-    if (atom) placeHalo(hoverHalo, atom, RED);
-    else glowBond(hit.id, 0x991a14);
+    markDoomed(hit);
   } else {
     canvas.style.cursor = 'grab';
     return;
   }
   canvas.style.cursor = 'pointer';
+}
+
+// Show in red what deleting `hit` would remove: an atom with its hydrogens and
+// links, or a single link.
+function markDoomed(hit) {
+  if (hit.type === 'bond') return glowBond(hit.id, RED);
+  const doomed = doomedBy(hit.id);
+  for (const id of doomed) {
+    const atom = atomById(id);
+    const r = radiusOf(atom.kind);
+    const tint = new THREE.Mesh(SPHERE, MARK_MATERIAL);
+    const rim = new THREE.Mesh(SPHERE, MARK_RIM);
+    tint.scale.setScalar(r * 1.04);
+    rim.scale.setScalar(r * 1.16);
+    tint.position.fromArray(atom.p);
+    rim.position.fromArray(atom.p);
+    marks.add(tint, rim);
+  }
+  hoveredBond = [];
+  for (const bond of model.bonds) {
+    if (!doomed.has(bond.a) && !doomed.has(bond.b)) continue;
+    const material = view.bonds.get(bond.id);
+    material.emissive.setHex(RED);
+    hoveredBond.push(material);
+  }
 }
 
 // Put the selected atom where the pointer is: into the nearest free hole of
@@ -1150,9 +1152,9 @@ function refreshHint() {
       ? `Click an atom to snap ${label(kindId)} into its nearest free hole`
       : `Click anywhere to place ${label(kindId)}`,
     link: linkFrom === null
-      ? 'Drag from one atom to another to join them, or click both. Join them again for a double or triple bond'
-      : 'Now click the atom to join it to',
-    delete: 'Click an atom or a link to remove it',
+      ? 'Drag from one atom to another to link them. Link the same two again for a double bond, and again for a triple'
+      : 'Now click the atom to link it to (linking two atoms again makes a double or triple bond)',
+    delete: 'Delete mode: click an atom or a link to remove it (red shows what goes). Undo puts it back',
   };
   $('hint').textContent = hints[tool];
 }
@@ -1297,6 +1299,7 @@ function flash(message) {
 
 function setTool(next) {
   tool = next;
+  canvas.parentElement.classList.toggle('deleting', tool === 'delete');
   linkFrom = null;
   showSelection();
   document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === tool));
@@ -1402,30 +1405,8 @@ $('zoom-in').addEventListener('click', () => zoomBy(0.8));
 $('zoom-out').addEventListener('click', () => zoomBy(1.25));
 $('clear').addEventListener('click', () => change(() => { model = { atoms: [], bonds: [], nextId: model.nextId }; }));
 
-$('save').addEventListener('click', () => {
-  if (!model.atoms.length) return flash('Build something first');
-  $('save-name').value = modelName();
-  $('save-dialog').returnValue = '';
-  $('save-dialog').showModal();
-  $('save-name').select();
-});
-$('save-dialog').addEventListener('close', () => {
-  const name = $('save-name').value.trim();
-  if ($('save-dialog').returnValue === 'save' && name) saveHere(name);
-});
-$('save-cancel').addEventListener('click', () => $('save-dialog').close());
-$('save-file').addEventListener('click', () => {
-  $('save-dialog').close();
-  saveFile();
-});
-$('open').addEventListener('click', () => {
-  showSaves();
-  $('load-dialog').showModal();
-});
-$('load-file').addEventListener('click', () => {
-  $('load-dialog').close();
-  $('open-file').click();
-});
+$('save').addEventListener('click', saveFile);
+$('open').addEventListener('click', () => $('open-file').click());
 $('open-file').addEventListener('change', e => {
   if (e.target.files[0]) openFile(e.target.files[0]);
   e.target.value = '';

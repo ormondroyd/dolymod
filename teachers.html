@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>For teachers · Dolymod</title>
+  <meta name="description" content="Teaching notes for a free ball-and-stick molecular model kit in the browser: curriculum links, classroom activities, and privacy.">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: block; overflow: auto; }
+    main.page { display: block; max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; line-height: 1.55; }
+    .page h1 { font-size: 28px; margin: 8px 0 4px; }
+    .page h2 { font-size: 20px; margin: 36px 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+    .page h3 { font-size: 16px; margin: 22px 0 4px; }
+    .page p, .page li { color: var(--ink); }
+    .page .lead { font-size: 17px; color: var(--muted); }
+    .page a { color: var(--accent); }
+    .page table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+    .page th, .page td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    .page th { width: 30%; font-weight: 600; }
+    .page .ask { margin: 6px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--button); border-radius: 0 8px 8px 0; }
+    .page .back { display: inline-block; margin-top: 4px; }
+    .page code { font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <a class="brand-name" href="./">Dolymod</a>
+      <span class="tag">notes for teachers</span>
+    </div>
+    <div class="actions"><a class="button-link" href="./">Open the kit</a></div>
+  </header>
+
+  <main class="page">
+    <h1>Notes for teachers</h1>
+    <p class="lead">A free, point-and-click ball-and-stick model kit that runs in the browser. Pupils
+      plug atoms into each other's holes, as with a plastic kit, and the finished molecule is named for
+      them. No logins, no installs, and nothing to tidy away.</p>
+    <a class="back" href="./">← Back to the kit</a>
+
+    <h2>The kit in two minutes</h2>
+    <table>
+      <tr><th>Build</th><td>Pick an atom from the box, then click an atom in the model: the new one snaps
+        into the nearest free hole (a preview shows where). Or drag an atom out of the box onto a hole.
+        <strong>Fill with H</strong> puts a hydrogen in every free hole.</td></tr>
+      <tr><th>Link</th><td>Drag from one atom to another to join them; this closes rings. Link the same
+        two atoms again for a <strong>double bond</strong>, and a third time for a <strong>triple
+        bond</strong>, as with the flexible links of a real kit.</td></tr>
+      <tr><th>Delete</th><td>Turns the view's edge red. Hover an atom or link and everything that a click
+        would remove shows in red; click to remove it. Undo puts it back.</td></tr>
+      <tr><th>Look around</th><td>Drag empty space to turn the view; pinch, scroll or use + and − to zoom;
+        two fingers, right-drag or Shift-drag to pan. Drag an atom to turn its piece; drag a single bond to
+        twist one end.</td></tr>
+      <tr><th>Examples</th><td>About 60 ready-made models, from water to caffeine, ice, graphite and a
+        buckyball.</td></tr>
+      <tr><th>Save and Load</th><td><strong>Save</strong> writes the model to a file (in Chrome, Edge and on
+        Chromebooks pupils choose the folder; in other browsers it goes to Downloads), so work can be handed
+        in. <strong>Load</strong> opens a saved file. The current model is also kept in the browser, so a
+        refresh doesn't lose it.</td></tr>
+    </table>
+    <p>Every ball has <strong>one hole for each bond it makes</strong>: hydrogen 1, oxygen 2, nitrogen 3,
+      carbon 4. A model with every hole filled is a real molecule, and the panel names it using
+      <a href="https://pubchem.ncbi.nlm.nih.gov" target="_blank" rel="noopener">PubChem</a>, the US
+      National Library of Medicine's chemistry database.</p>
+
+    <h2>Where it fits</h2>
+    <h3>England: KS3 science</h3>
+    <ul>
+      <li>Atoms, elements and compounds; chemical symbols and formulae.</li>
+      <li>Simple molecules, and the difference between a molecule and a giant structure.</li>
+    </ul>
+    <h3>GCSE chemistry (AQA, OCR, Edexcel and others)</h3>
+    <ul>
+      <li>Covalent bonding, including double and triple bonds.</li>
+      <li>Structure and properties: small molecules; giant covalent structures (diamond, graphite,
+        silica); fullerenes and the buckyball; the giant ionic lattice of sodium chloride.</li>
+      <li>Organic chemistry: alkanes, alkenes, alcohols and carboxylic acids; structural isomers.</li>
+      <li>Hydrogen bonding and the structure of ice.</li>
+      <li>The limitations of ball-and-stick and 3D models (see below).</li>
+    </ul>
+    <h3>US middle school (NGSS)</h3>
+    <ul>
+      <li><strong>MS-PS1-1</strong>: develop models to describe the atomic composition of simple molecules
+        and extended structures.</li>
+    </ul>
+
+    <h2>Activities</h2>
+
+    <h3>1. Holes are bonds</h3>
+    <p>Look at the box: hydrogen has 1 hole, oxygen 2, nitrogen 3, carbon 4. Build water, ammonia and
+      methane: one atom, then Fill with H.</p>
+    <p class="ask">Why can't you add a third hydrogen to the oxygen? What does the number of holes tell you
+      about each element?</p>
+
+    <h3>2. The alkane staircase</h3>
+    <p>Start with one carbon and Fill with H (methane). Undo the fill, add a second carbon, fill again
+      (ethane). Keep going: propane, butane, pentane. Record each formula from the panel.</p>
+    <p class="ask">What's the pattern? Predict the formula for 10 carbons, then build it to check.
+      (C<sub>n</sub>H<sub>2n+2</sub>.)</p>
+
+    <h3>3. Same formula, different molecule</h3>
+    <p>Build two different molecules with the formula C<sub>4</sub>H<sub>10</sub>: a straight chain and a
+      branched one. Then two with C<sub>2</sub>H<sub>6</sub>O. The panel names each, so pupils can see
+      they've made different substances (butane and isobutane; ethanol and dimethyl ether).</p>
+    <p class="ask">If the formula is the same, why are the names different? Why might they boil at
+      different temperatures?</p>
+
+    <h3>4. Double and triple bonds</h3>
+    <p>Build two joined carbons and Fill with H: that's ethane. Undo the fill, then in Link mode drag from
+      one carbon to the other to add a second link, and Fill with H: ethene. Undo the fill again and add a
+      third link: ethyne. Then build carbon dioxide, with two double bonds. Try dragging each bond to twist
+      it.</p>
+    <p class="ask">How does the shape change from ethane to ethene to ethyne? Why will a single bond twist
+      but a double bond won't?</p>
+
+    <h3>5. One element, three structures</h3>
+    <p>Load the diamond chunk, graphite and the buckyball from Examples. Count the links on a carbon in
+      each.</p>
+    <p class="ask">Diamond's carbons use all four holes; graphite's use three, leaving one spare. How does
+      that explain diamond's hardness, graphite's slippery layers, and why pencil lead conducts
+      electricity?</p>
+
+    <h3>6. Molecules or giant structures?</h3>
+    <p>Compare carbon dioxide (a small molecule) with silica (a giant structure of silicon and oxygen) and
+      the salt crystal (a lattice of ions). Note how the formula of a giant structure is a ratio: NaCl,
+      not one molecule.</p>
+    <p class="ask">CO<sub>2</sub> is a gas but sand (SiO<sub>2</sub>) is a hard solid. What's
+      different about how their atoms are joined?</p>
+
+    <h3>7. Ice and hydrogen bonds</h3>
+    <p>Load ice. The dotted lines are hydrogen bonds between water molecules; they aren't links. Turn it to
+      look down on the six-sided rings.</p>
+    <p class="ask">Where do snowflakes get their six sides? Why does ice float on water?</p>
+
+    <h3>8. Mystery molecules</h3>
+    <p>Give pupils only a formula or a name, such as C<sub>3</sub>H<sub>6</sub>O or "vinegar", and ask them
+      to build it. The panel tells them what they've actually made.</p>
+
+    <h3>9. What does the model leave out?</h3>
+    <p>Good for the GCSE "limitations of models" point. Things to notice:</p>
+    <ul>
+      <li>Atoms aren't coloured balls, and they aren't drawn to scale.</li>
+      <li>Bonds are shared electrons, not sticks; electrons and lone pairs aren't shown (oxygen has two holes,
+        but four pairs of electrons).</li>
+      <li>A real double bond isn't two bent links.</li>
+      <li>Real molecules vibrate and bonds have different lengths; the kit keeps them tidy.</li>
+      <li>Ions and charges are left out, apart from the salt crystal.</li>
+    </ul>
+
+    <h2>Practicalities</h2>
+    <ul>
+      <li>Runs in any up-to-date browser: Chromebooks, iPads, Windows and Macs, and phones. Nothing to
+        install and no accounts.</li>
+      <li>Everything runs from this site; the only other site it contacts is PubChem, to name molecules. If a
+        school network blocks PubChem, building still works but molecules won't be named.</li>
+      <li>To hand work in, pupils Save to a file and upload or email it; Load opens it again.</li>
+    </ul>
+
+    <h2>Privacy</h2>
+    <ul>
+      <li>No accounts, no logins, no cookies, no adverts, and no tracking or analytics scripts.</li>
+      <li>The model being built is kept in the browser's own storage on that device, so it survives a
+        refresh. It isn't sent to us.</li>
+      <li>To name a molecule, its structure (a line of text describing the atoms and bonds, called SMILES) is
+        sent to PubChem. Nothing about the pupil is sent.</li>
+      <li>Saved files stay wherever the pupil saves them.</li>
+      <li>Like any website, the web server keeps standard access logs.</li>
+    </ul>
+
+    <p><a href="./">← Back to the kit</a></p>
+  </main>
+</body>
+</html>
