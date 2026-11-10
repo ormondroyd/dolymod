@@ -84,6 +84,15 @@ instead: real magnesium chloride is MgCl₂. Fill with H leaves ions alone.
 A double bond is two flexible links between the same two atoms, each in its own hole,
 and a triple bond is three. The atoms turn so the links bend evenly side by side.
 
+## Deploying
+
+It's static files, so any web server works. The included `Dockerfile` serves them with
+nginx (`nginx.conf`), telling browsers to check for a newer page, scripts and styles on
+every visit (a quick "304 Not Modified" when nothing changed), so a deploy shows up
+straight away; three.js in `vendor/` is cached for a week. On Coolify, use the
+**Dockerfile** build pack. If the domain's DNS is on Cloudflare, leave the record
+**DNS only** (grey cloud) so Cloudflare doesn't cache or sit between visitors and the site.
+
 ## Code
 
 - `index.html`, `style.css`: the page. `teachers.html`: notes for teachers (curriculum
