@@ -3,8 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>molecules.fyi</title>
-  <meta name="description" content="A point-and-click ball-and-stick molecular model kit that runs in the browser.">
+  <title>molecules.fyi · Build molecules in 3D, a free model kit</title>
+  <meta name="description" content="A free 3D ball-and-stick model kit for school chemistry. Snap atoms together, make double bonds and crystals, and see every molecule named. No login.">
+  <link rel="canonical" href="https://molecules.fyi/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="molecules.fyi">
+  <meta property="og:url" content="https://molecules.fyi/">
+  <meta property="og:title" content="molecules.fyi · Build molecules in 3D">
+  <meta property="og:description" content="A free 3D ball-and-stick model kit for school chemistry. Snap atoms together, make double bonds and crystals, and see every molecule named. No login.">
+  <meta name="twitter:title" content="molecules.fyi · Build molecules in 3D">
+  <meta name="twitter:description" content="A free 3D ball-and-stick model kit for school chemistry. Snap atoms together, make double bonds and crystals, and see every molecule named. No login.">
+  <meta property="og:image" content="https://molecules.fyi/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A 3D ball-and-stick model of a salt crystal lattice beside the words: molecules.fyi, build molecules in 3D">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://molecules.fyi/social.png">
+  <meta name="theme-color" content="#1e232a">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "molecules.fyi",
+      "url": "https://molecules.fyi/",
+      "description": "A free 3D ball-and-stick model kit for school chemistry. Snap atoms together, make double bonds and crystals, and see every molecule named. No login.",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Any web browser",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "GBP"
+      },
+      "audience": {
+        "@type": "EducationalAudience",
+        "educationalRole": "student"
+      },
+      "license": "https://www.gnu.org/licenses/agpl-3.0.html"
+    }
+  </script>
   <link rel="stylesheet" href="style.css">
   <script type="importmap">
     {
@@ -31,7 +71,6 @@
       <button id="save" title="Save this model to a file">Save</button>
       <button id="open" title="Open a saved model file">Load</button>
       <input id="open-file" type="file" accept=".json,application/json" hidden>
-      <button id="fill" title="Put a hydrogen in every free hole">Fill with H</button>
       <button id="undo" title="Undo (Ctrl/⌘ Z)" disabled>Undo</button>
       <button id="fit">Fit view</button>
       <button id="clear">Clear</button>
@@ -60,7 +99,13 @@
         <div id="formula" class="formula">&mdash;</div>
         <div id="details" class="details"></div>
       </div>
-      <p class="help">Drag an atom from the box onto a hole · in Link, drag from atom to atom (twice for a double bond, three times for a triple) · drag an atom to turn its piece · drag a bond to twist it · drag empty space to turn the view · pinch, scroll or +/− to zoom · two fingers, right-drag or Shift-drag to pan</p>
+      <dl class="help" aria-label="Moving things around">
+        <dt>Turn the view</dt><dd>drag empty space</dd>
+        <dt>Zoom</dt><dd>scroll, pinch or + −</dd>
+        <dt>Pan</dt><dd>right-drag, Shift-drag or two fingers</dd>
+        <dt>Turn a piece</dt><dd>drag an atom</dd>
+        <dt>Twist a bond</dt><dd>drag a link</dd>
+      </dl>
     </section>
   </main>
   <footer class="foot">

@@ -79,8 +79,8 @@ export const EXAMPLES = [
   { group: 'Weird and wonderful', name: 'Sulfur hexafluoride', tree: ['S6', 'F', 'F', 'F', 'F', 'F', 'F'] },
   { group: 'Weird and wonderful', name: 'Phosphorus pentachloride', tree: ['P5', 'Cl', 'Cl', 'Cl', 'Cl', 'Cl'] },
 
-  { group: 'Crystals and cages', name: 'Salt crystal (cubic)', build: ionLattice('Na', 'Cl6') },
-  { group: 'Crystals and cages', name: 'Magnesium oxide crystal (cubic)', build: ionLattice('Mg', 'O6') },
+  { group: 'Crystals and cages', name: 'Salt crystal (cubic)', build: ionLattice('Na', 'Cl6'), view: [1, 0.75, 1.35] },
+  { group: 'Crystals and cages', name: 'Magnesium oxide crystal (cubic)', build: ionLattice('Mg', 'O6'), view: [1, 0.75, 1.35] },
   { group: 'Crystals and cages', name: 'Diamond chunk (cubic)', build: cage(diamond()), label: 'Diamond (a chunk of the crystal)' },
   { group: 'Crystals and cages', name: 'Hexagonal diamond (from meteorites)', build: lonsdaleite, label: 'Hexagonal diamond (lonsdaleite)' },
   { group: 'Crystals and cages', name: 'Graphite (pencil lead, layers)', build: graphite, label: 'Graphite (three layers)', view: [0, -1, 0.5] },

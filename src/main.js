@@ -1150,7 +1150,7 @@ const label = id => {
 function refreshHint() {
   const hints = {
     add: model.atoms.length
-      ? `Click an atom to snap ${label(kindId)} into its nearest free hole`
+      ? `Click an atom to plug ${label(kindId)} into it, or drag one from the box`
       : `Click anywhere to place ${label(kindId)}`,
     link: linkFrom === null
       ? 'Drag from one atom to another to link them. Link the same two again for a double bond, and again for a triple'
@@ -1334,7 +1334,20 @@ for (const kind of KINDS) {
     heading.textContent = group;
     const chips = document.createElement('div');
     chips.className = 'chips';
-    section.append(heading, chips);
+    if (group === 'Atoms') {
+      // Fill with H sits by the atoms, next to the hydrogen it adds.
+      const top = document.createElement('div');
+      top.className = 'box-head';
+      const fill = document.createElement('button');
+      fill.id = 'fill';
+      fill.type = 'button';
+      fill.title = 'Put a hydrogen in every free hole';
+      fill.textContent = 'Fill with H';
+      top.append(heading, fill);
+      section.append(top, chips);
+    } else {
+      section.append(heading, chips);
+    }
     $('box').append(section);
     sections.set(group, chips);
   }
