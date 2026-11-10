@@ -47,7 +47,10 @@ work, because browsers block ES modules on `file://`.)
   what hold ice together. A model of several copies of one molecule shows its formula
   as, say, 21 × H₂O.
 - **Saving**: your model is kept in the browser as you build, so it comes back after a
-  refresh. **Save** downloads it as a `.dolymod.json` file and **Load** opens one.
+  refresh. **Save** keeps a named copy in this browser (it suggests the molecule's
+  name) and **Load** lists your saved models, newest first, to open or delete. Saves
+  stay on that computer; to move one elsewhere, use **Download as a file** in Save and
+  **Open a file** in Load (`.dolymod.json`).
 - **Naming**: once every hole is filled, the panel names the molecule. The model is
   written as a SMILES string and looked up in [PubChem](https://pubchem.ncbi.nlm.nih.gov),
   so this needs an internet connection. Cis/trans and mirror-image forms aren't told

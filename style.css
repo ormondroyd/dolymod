@@ -266,3 +266,36 @@ main { flex: 1; display: flex; min-height: 0; }
   .toast { top: 112px; }
   .chip { min-height: 48px; }
 }
+
+/* Save and Load dialogs. */
+.sheet {
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--ink);
+  background: var(--bg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+.sheet::backdrop { background: rgba(0, 0, 0, 0.35); }
+.sheet h2 { margin: 0 0 12px; font-size: 17px; }
+.sheet label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--muted); }
+.sheet input {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--button);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.sheet .note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.sheet .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.sheet .spacer { flex: 1; }
+.sheet .primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.saves { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.saves li { display: flex; gap: 6px; margin-bottom: 6px; }
+.saves .saved { flex: 1; display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; }
+.saves .saved span { overflow-wrap: anywhere; }
+.saves .saved small { color: var(--muted); font-size: 12px; }
+.saves .forget { width: 40px; padding: 0; font-size: 18px; }

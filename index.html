@@ -26,8 +26,8 @@
       <select id="examples" aria-label="Load an example">
         <option value="" disabled selected>Examples…</option>
       </select>
-      <button id="save" title="Download this model as a file">Save</button>
-      <button id="open" title="Load a saved model file">Load</button>
+      <button id="save" title="Save this model in this browser">Save</button>
+      <button id="open" title="Load a model saved in this browser">Load</button>
       <input id="open-file" type="file" accept=".json,application/json" hidden>
       <button id="fill" title="Put a hydrogen in every free hole">Fill with H</button>
       <button id="undo" title="Undo (Ctrl/⌘ Z)" disabled>Undo</button>
@@ -61,5 +61,33 @@
       <p class="help">Drag an atom from the box onto a hole · in Link, drag from atom to atom · drag an atom to turn its piece · drag a bond to twist it · drag empty space to turn the view · pinch, scroll or +/− to zoom · two fingers, right-drag or Shift-drag to pan</p>
     </section>
   </main>
+
+  <dialog id="save-dialog" class="sheet">
+    <form method="dialog">
+      <h2>Save in this browser</h2>
+      <label for="save-name">Name</label>
+      <input id="save-name" maxlength="60" required autocomplete="off">
+      <p class="note">Saves stay in this browser on this computer. To move a model to another computer, download it as a file.</p>
+      <div class="row">
+        <button type="button" id="save-file">Download as a file</button>
+        <span class="spacer"></span>
+        <button type="button" id="save-cancel">Cancel</button>
+        <button value="save" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="load-dialog" class="sheet">
+    <form method="dialog">
+      <h2>Your saved models</h2>
+      <ul id="save-list" class="saves"></ul>
+      <p id="no-saves" class="note">Nothing saved yet. Use Save to keep a model here.</p>
+      <div class="row">
+        <button type="button" id="load-file">Open a file…</button>
+        <span class="spacer"></span>
+        <button value="cancel">Close</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>

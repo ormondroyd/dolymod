@@ -278,7 +278,8 @@ function fillHydrogens() {
 
 // ---- Saving -----------------------------------------------------------------
 // The model is kept in this browser as you build, so a refresh brings it back.
-// Save downloads it as a file and Load opens one, for keeping or sharing.
+// Save keeps a named copy in this browser and Load lists them; a model can
+// also go to a file and back, to move it to another computer.
 
 const STORE = 'dolymod-model';
 let saveTimer;
@@ -319,10 +320,76 @@ function readModel(data) {
   };
 }
 
+const SAVES = 'dolymod-saves';
+
+// What to call the model: its name if it has one, else its formula.
+const modelName = () => (!$('name').classList.contains('status') && $('name').textContent) || $('formula').textContent;
+
+function readSaves() {
+  try {
+    const saves = JSON.parse(localStorage.getItem(SAVES));
+    return Array.isArray(saves) ? saves : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSaves(saves) {
+  try {
+    localStorage.setItem(SAVES, JSON.stringify(saves));
+    return true;
+  } catch {
+    flash("Couldn't save: this browser's storage is full or switched off");
+    return false;
+  }
+}
+
+// Saving under a name that's already used replaces that save.
+function saveHere(name) {
+  const saves = readSaves().filter(s => s.name !== name);
+  saves.unshift({ name, savedAt: Date.now(), model });
+  if (writeSaves(saves)) flash(`Saved “${name}” in this browser`);
+}
+
+function showSaves() {
+  const saves = readSaves();
+  const when = time => new Date(time).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $('save-list').replaceChildren(...saves.map(save => {
+    const item = document.createElement('li');
+    const open = document.createElement('button');
+    open.className = 'saved';
+    open.type = 'button';
+    const name = document.createElement('span');
+    name.textContent = save.name;
+    const about = document.createElement('small');
+    about.textContent = `${save.model?.atoms?.length ?? 0} atoms · ${when(save.savedAt)}`;
+    open.append(name, about);
+    open.addEventListener('click', () => {
+      const saved = readModel(save.model);
+      if (!saved) return flash('That save is damaged and can’t be loaded');
+      $('load-dialog').close();
+      change(() => { model = saved; });
+      fitView();
+    });
+    const forget = document.createElement('button');
+    forget.className = 'forget';
+    forget.type = 'button';
+    forget.textContent = '×';
+    forget.title = `Delete “${save.name}”`;
+    forget.setAttribute('aria-label', forget.title);
+    forget.addEventListener('click', () => {
+      if (!confirm(`Delete “${save.name}” from this browser? This can't be undone.`)) return;
+      if (writeSaves(readSaves().filter(s => s.name !== save.name || s.savedAt !== save.savedAt))) showSaves();
+    });
+    item.append(open, forget);
+    return item;
+  }));
+  $('no-saves').hidden = saves.length > 0;
+}
+
 function saveFile() {
   if (!model.atoms.length) return flash('Build something first');
-  const named = !$('name').classList.contains('status') && $('name').textContent;
-  const slug = (named || 'molecule').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'molecule';
+  const slug = modelName().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'molecule';
   const file = new Blob([JSON.stringify({ app: 'dolymod', version: 1, model })], { type: 'application/json' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(file);
@@ -1335,8 +1402,30 @@ $('zoom-in').addEventListener('click', () => zoomBy(0.8));
 $('zoom-out').addEventListener('click', () => zoomBy(1.25));
 $('clear').addEventListener('click', () => change(() => { model = { atoms: [], bonds: [], nextId: model.nextId }; }));
 
-$('save').addEventListener('click', saveFile);
-$('open').addEventListener('click', () => $('open-file').click());
+$('save').addEventListener('click', () => {
+  if (!model.atoms.length) return flash('Build something first');
+  $('save-name').value = modelName();
+  $('save-dialog').returnValue = '';
+  $('save-dialog').showModal();
+  $('save-name').select();
+});
+$('save-dialog').addEventListener('close', () => {
+  const name = $('save-name').value.trim();
+  if ($('save-dialog').returnValue === 'save' && name) saveHere(name);
+});
+$('save-cancel').addEventListener('click', () => $('save-dialog').close());
+$('save-file').addEventListener('click', () => {
+  $('save-dialog').close();
+  saveFile();
+});
+$('open').addEventListener('click', () => {
+  showSaves();
+  $('load-dialog').showModal();
+});
+$('load-file').addEventListener('click', () => {
+  $('load-dialog').close();
+  $('open-file').click();
+});
 $('open-file').addEventListener('change', e => {
   if (e.target.files[0]) openFile(e.target.files[0]);
   e.target.value = '';
