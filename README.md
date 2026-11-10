@@ -94,6 +94,9 @@ and a triple bond is three. The atoms turn so the links bend evenly side by side
 - `src/layout.js`: reads SMILES (from PubChem), adds the hydrogens, and lays the
   molecule out in 3D by nudging atoms until bond lengths and angles come out right.
 
-Uses [three.js](https://threejs.org) 0.160 from a CDN.
+Uses [three.js](https://threejs.org) 0.160.0 (MIT licence), kept in `vendor/three/` so
+the site needs nothing from other servers except PubChem for naming. Those are three
+files from the npm package: `build/three.module.min.js`, and from `examples/jsm/`,
+`controls/OrbitControls.js` and `environments/RoomEnvironment.js`.
 
 Inspired by physical ball-and-stick kits such as Molymod. Not affiliated with them.
