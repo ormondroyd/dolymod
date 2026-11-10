@@ -34,7 +34,7 @@ work, because browsers block ES modules on `file://`.)
   touchscreen) shows in red everything a click would remove: an atom with its hydrogens and
   links, or one link. Deleting one link of a double bond leaves a single bond. Undo puts things back.
 - **Fill with H** puts a hydrogen in every free hole.
-- **Examples**: load one of 61 ready-made models, in ten groups: gases, everyday
+- **Examples**: load one of 65 ready-made models, in ten groups: gases, everyday
   chemicals (water to indigo), food and flavours (caffeine, chocolate's theobromine,
   vanillin, chilli, mint, oranges, sugar, lemons), medicines (aspirin, paracetamol,
   ibuprofen), body chemicals (dopamine, serotonin, adrenaline), acids, poisons
@@ -68,10 +68,11 @@ sections:
 
 | Section | Atom | Holes |
 | --- | --- | --- |
-| Atoms | Sulfur (for SF₆ and sulfuric acid) | 6 |
-| | Phosphorus (for PCl₅) | 5 |
+| Atoms | Iodine (for IF₇) | 7 |
+| | Sulfur (for SF₆ and sulfuric acid) | 6 |
+| | Phosphorus (for PCl₅), bromine (for BrF₅), iodine (for IF₅) | 5 |
 | | Carbon, silicon | 4 |
-| | Nitrogen, phosphorus, boron | 3 |
+| | Nitrogen, phosphorus, boron, chlorine (for ClF₃), bromine (for BrF₃) | 3 |
 | | Oxygen, sulfur | 2 |
 | | Hydrogen, fluorine, chlorine, bromine, iodine | 1 |
 | Ions | Li⁺, Na⁺, K⁺, Mg²⁺, Ca²⁺, F⁻, Cl⁻, Br⁻, O²⁻ | 6, set square |

@@ -13,6 +13,10 @@ const TRIGONAL = [0, 120, 240].map(deg => {
 });
 const BIPYRAMIDAL = [...TRIGONAL, v(0, 0, 1), v(0, 0, -1)];
 const OCTAHEDRAL = [v(1, 0, 0), v(-1, 0, 0), v(0, 1, 0), v(0, -1, 0), v(0, 0, 1), v(0, 0, -1)];
+const PENTAGONAL = [...[0, 72, 144, 216, 288].map(deg => {
+  const r = THREE.MathUtils.degToRad(deg);
+  return v(Math.cos(r), Math.sin(r), 0);
+}), v(0, 0, 1), v(0, 0, -1)];
 const SINGLE = [v(1, 0, 0)];
 
 export const ELEMENTS = {
@@ -54,12 +58,20 @@ export const KINDS = [
   { id: 'S6', el: 'S', holes: OCTAHEDRAL },
   { id: 'P', el: 'P', holes: TETRAHEDRAL.slice(0, 3) },
   { id: 'P5', el: 'P', holes: BIPYRAMIDAL },
-  { id: 'F', el: 'F', holes: SINGLE },
-  { id: 'Cl', el: 'Cl', holes: SINGLE },
-  { id: 'Br', el: 'Br', holes: SINGLE },
-  { id: 'I', el: 'I', holes: SINGLE },
   { id: 'Si', el: 'Si', holes: TETRAHEDRAL },
   { id: 'B', el: 'B', holes: TRIGONAL },
+  // Chlorine, bromine and iodine can make more than one bond, as in ClF3,
+  // BrF5 and IF7. Their extra balls' holes take the real shapes: a T, a
+  // square-based pyramid, and five round the middle with one above and below.
+  { id: 'F', el: 'F', holes: SINGLE },
+  { id: 'Cl', el: 'Cl', holes: SINGLE },
+  { id: 'Cl3', el: 'Cl', holes: OCTAHEDRAL.slice(0, 3) },
+  { id: 'Br', el: 'Br', holes: SINGLE },
+  { id: 'Br3', el: 'Br', holes: OCTAHEDRAL.slice(0, 3) },
+  { id: 'Br5', el: 'Br', holes: OCTAHEDRAL.slice(0, 5) },
+  { id: 'I', el: 'I', holes: SINGLE },
+  { id: 'I5', el: 'I', holes: OCTAHEDRAL.slice(0, 5) },
+  { id: 'I7', el: 'I', holes: PENTAGONAL },
   ion('Li', 'Li', 1, 'Lithium ion'),
   ion('Na', 'Na', 1, 'Sodium ion'),
   ion('K', 'K', 1, 'Potassium ion'),
