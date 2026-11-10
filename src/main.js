@@ -955,8 +955,7 @@ function startDrag(hit) {
     const skip = new Set([bond]);
     const sideB = pieceOf(bond.b, skip);
     if (sideB.has(bond.a)) {
-      const double = linksBetween(atomById(bond.a), atomById(bond.b)).length > 1;
-      flash(double ? "Double and triple bonds can't twist" : "Bonds in a ring can't twist");
+      if (linksBetween(atomById(bond.a), atomById(bond.b)).length > 1) flash("Double and triple bonds can't twist");
       return null;
     }
     const sideA = pieceOf(bond.a, skip);
