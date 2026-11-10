@@ -100,4 +100,16 @@ the site needs nothing from other servers except PubChem for naming. Those are t
 files from the npm package: `build/three.module.min.js`, and from `examples/jsm/`,
 `controls/OrbitControls.js` and `environments/RoomEnvironment.js`.
 
-Inspired by physical ball-and-stick kits such as Molymod. Not affiliated with them.
+Inspired by physical ball-and-stick kits such as Molymod®. Not affiliated with them.
+
+## Licence
+
+Copyright © 2026 ormondroyd.
+
+molecules.fyi is free software: you can redistribute it and/or modify it under the terms
+of the GNU Affero General Public License, version 3 (see [LICENSE](LICENSE)). If you run
+a modified version on a website, you must offer its users the source code of your
+version under the same licence.
+
+three.js, in `vendor/three/`, is © the three.js authors under the MIT licence
+([vendor/three/LICENSE](vendor/three/LICENSE)).
