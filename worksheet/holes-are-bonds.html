@@ -1,107 +1,125 @@
 <!doctype html>
 <!--
-  The KS3 worksheet, as plain HTML so it converts cleanly to rich text.
-  To remake the .rtf from the repo root (macOS):
-    python3 worksheet/make-rtf.py
+  The KS3 worksheet. To remake the PDF, serve the repo and run from its root:
+
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+    --user-data-dir="$(mktemp -d)" --no-pdf-header-footer \
+    --print-to-pdf=worksheet/holes-are-bonds.pdf http://localhost:8643/worksheet/holes-are-bonds.html
+
+  The QR code opens https://molecules.fyi.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Holes are bonds: building molecules in 3D</title>
 <style>
-  /* textutil reads CSS pt as 4/3 bigger in RTF, so sizes are in px (1px = 1pt there). */
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; }
-  p { margin: 0 0 5px; }
-  h1 { font-size: 18px; margin: 0 0 3px; }
-  h2 { font-size: 12.5px; margin: 10px 0 3px; }
-  td, th { font-size: 10.5px; padding: 3px 5px; vertical-align: top; }
-  th { text-align: left; }
-  .after { margin-top: 6px; }
-  .small { font-size: 8.5px; margin-top: 10px; }
+  @page { size: A4; margin: 11mm 14mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.3; color: #111; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 6mm; }
+  h1 { font-size: 19pt; margin: 0 0 1.5mm; letter-spacing: -0.01em; }
+  .sub { margin: 0 0 3mm; }
+  .qr { text-align: center; font-size: 8.5pt; font-weight: bold; }
+  .qr svg { display: block; width: 24mm; height: 24mm; margin-bottom: 1mm; }
+  .fields { display: flex; gap: 5mm; margin-bottom: 3mm; }
+  .fields span { flex: 1; border-bottom: 0.6pt solid #444; padding-bottom: 1mm; }
+  .fields span:first-child { flex: 2; }
+  .how { border: 0.8pt solid #444; border-radius: 2mm; padding: 2mm 3.5mm; margin-bottom: 1mm; }
+  .how b.head { display: block; margin-bottom: 0.5mm; }
+  .how ul { margin: 0; padding-left: 4.5mm; }
+  h2 { font-size: 12pt; margin: 3.2mm 0 1mm; }
+  h2 .n { display: inline-block; width: 6.5mm; height: 6.5mm; line-height: 6.5mm; text-align: center; border-radius: 50%;
+          background: #111; color: #fff; font-size: 10pt; margin-right: 1.5mm; }
+  p { margin: 0 0 1.5mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 2mm; }
+  th, td { border: 0.6pt solid #444; padding: 0 2mm; height: 6.3mm; text-align: left; vertical-align: middle; font-size: 10pt; }
+  th { background: #eee; }
+  td.grey { color: #888; }
+  .line { border-bottom: 0.6pt solid #444; height: 6.5mm; margin-bottom: 1mm; }
+  .inline { display: inline-block; border-bottom: 0.6pt solid #444; width: 40mm; height: 5mm; vertical-align: bottom; }
+  .wide { width: 60mm; }
+  .challenge { border: 0.8pt dashed #444; border-radius: 2mm; padding: 1.5mm 3.5mm; margin-top: 3mm; }
+  footer { margin-top: 3mm; font-size: 8pt; color: #555; }
+  .answers { break-before: page; }
+  .answers p { margin-bottom: 2.5mm; }
 </style>
 </head>
 <body>
 
-<h1>Holes are bonds: building molecules in 3D</h1>
-<p><b>KS3 chemistry.</b> Free online model kit: <b>https://molecules.fyi</b> (no login needed)</p>
-<p>Name: ____________________________ &nbsp; Class: __________ &nbsp; Date: __________</p>
+<header>
+  <div>
+    <h1>Holes are bonds: building molecules in 3D</h1>
+    <p class="sub"><b>KS3 chemistry.</b> Use the free online model kit at <b>molecules.fyi</b> (no login needed).
+      Every atom is a ball with holes, and <b>each hole is one bond</b>. A molecule is finished when every hole is filled.</p>
+    <div class="fields"><span>Name:</span><span>Class:</span><span>Date:</span></div>
+  </div>
+  <div class="qr"><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" class="segno"><path transform="scale(4)" class="qrline" stroke="#000" d="M0 0.5h7m3 0h7m1 0h7m-25 1h1m5 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m5 0h1m-25 1h1m1 0h3m1 0h1m2 0h4m1 0h3m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h2m2 0h1m1 0h3m1 0h1m-25 1h1m5 0h1m2 0h3m2 0h3m1 0h1m5 0h1m-25 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-16 1h2m2 0h1m1 0h2m-17 1h1m1 0h1m1 0h1m1 0h1m4 0h1m1 0h1m2 0h1m3 0h1m2 0h1m-24 1h1m1 0h1m2 0h1m1 0h2m1 0h1m3 0h1m1 0h3m5 0h1m-25 1h1m4 0h3m2 0h3m1 0h1m1 0h2m1 0h2m1 0h3m-21 1h1m3 0h2m1 0h1m1 0h4m1 0h1m1 0h1m2 0h1m-18 1h1m3 0h1m2 0h1m1 0h4m2 0h1m1 0h2m-23 1h4m1 0h2m2 0h1m4 0h3m2 0h1m2 0h1m-25 1h1m1 0h5m2 0h1m4 0h1m2 0h1m1 0h1m2 0h3m-24 1h2m1 0h2m1 0h2m2 0h1m1 0h5m2 0h1m2 0h1m-24 1h1m5 0h2m2 0h1m1 0h1m1 0h1m1 0h6m-14 1h6m2 0h1m3 0h2m1 0h2m-25 1h7m2 0h1m1 0h2m1 0h3m1 0h1m1 0h2m1 0h2m-25 1h1m5 0h1m2 0h1m2 0h2m2 0h1m3 0h2m-22 1h1m1 0h3m1 0h1m1 0h4m2 0h1m1 0h6m1 0h2m-25 1h1m1 0h3m1 0h1m2 0h3m4 0h1m2 0h4m-23 1h1m1 0h3m1 0h1m1 0h2m3 0h1m2 0h1m3 0h1m3 0h1m-25 1h1m5 0h1m2 0h1m1 0h1m3 0h2m3 0h2m1 0h1m-24 1h7m1 0h1m3 0h1m2 0h5m3 0h2"/></svg> molecules.fyi</div>
+</header>
 
-<p>In this kit every atom is a ball with holes, and <b>each hole is one bond</b>. A molecule is
-finished when every hole is filled.</p>
+<div class="how">
+  <b class="head">How to use the kit</b>
+  <ul>
+    <li>Pick an atom from the box. Click the empty table to put it down, or click an atom to plug it in.</li>
+    <li><b>Fill with H</b> puts a hydrogen in every empty hole. <b>Undo</b> takes it back. <b>Clear</b> empties the table.</li>
+    <li><b>Link</b>: drag from one atom to another to join them. Do it again to make a double bond.</li>
+    <li>The panel under the model shows the formula and the name of what you made.</li>
+  </ul>
+</div>
 
-<table border="1" cellspacing="0" width="100%">
-<tr><th>How to use the kit</th></tr>
-<tr><td>
-&bull; Pick an atom from the box on the left, then click the empty table to put it down.<br>
-&bull; Click an atom on the table to plug the atom you picked into it.<br>
-&bull; <b>Fill with H</b> puts a hydrogen in every empty hole. <b>Undo</b> takes it back. <b>Clear</b> empties the table.<br>
-&bull; <b>Link</b>: drag from one atom to another to join them. Do it again to make a double bond.<br>
-&bull; The panel under the model shows the formula and the name of what you made.
-</td></tr>
-</table>
-
-<h2>1. Count the holes</h2>
+<h2><span class="n">1</span>Count the holes</h2>
 <p>Put one atom on an empty table and press <b>Fill with H</b>. Press <b>Clear</b> before the next one.</p>
-<table border="1" cellspacing="0" width="100%">
-<tr><th>Atom</th><th>Holes</th><th>Name of what you made</th><th>Formula</th></tr>
-<tr><td>Hydrogen</td><td>&nbsp;</td><td>(skip)</td><td>(skip)</td></tr>
-<tr><td>Oxygen</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>Nitrogen</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>Carbon</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<table>
+  <tr><th style="width: 22%">Atom</th><th style="width: 13%">Holes</th><th>Name of what you made</th><th style="width: 22%">Formula</th></tr>
+  <tr><td>Hydrogen</td><td></td><td class="grey">(skip)</td><td class="grey">(skip)</td></tr>
+  <tr><td>Oxygen</td><td></td><td></td><td></td></tr>
+  <tr><td>Nitrogen</td><td></td><td></td><td></td></tr>
+  <tr><td>Carbon</td><td></td><td></td><td></td></tr>
 </table>
-<p class="after">Why can't an oxygen atom hold three hydrogens?<br>
-______________________________________________________________________________</p>
+<p>Why can't an oxygen atom hold three hydrogens?</p>
+<div class="line"></div>
 
-<h2>2. The carbon staircase</h2>
-<p>Put down one carbon and press <b>Fill with H</b>. Press <b>Undo</b>, plug in another carbon, and
-fill again. Keep going up to five carbons.</p>
-<table border="1" cellspacing="0" width="100%">
-<tr><th>Carbons</th><th>Name</th><th>Formula</th></tr>
-<tr><td>1</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>2</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>3</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>4</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>5</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<h2><span class="n">2</span>The carbon staircase</h2>
+<p>Put down a carbon and press <b>Fill with H</b>. <b>Undo</b>, plug in another carbon, and fill again. Go up to five.</p>
+<table>
+  <tr><th style="width: 15%">Carbons</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+  <tr><th>Name</th><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><th>Formula</th><td></td><td></td><td></td><td></td><td></td></tr>
 </table>
-<p class="after">If a chain has <i>n</i> carbons, how many hydrogens does it have? ____________________</p>
-<p>Predict the formula for 10 carbons: ____________ Now build it to check.</p>
+<p>If a chain has <i>n</i> carbons, how many hydrogens does it have? <span class="inline"></span></p>
+<p>Predict the formula for 10 carbons: <span class="inline"></span> Now build it to check.</p>
 
-<h2>3. Same formula, different molecule</h2>
-<p>Build two different molecules that are both C<sub>4</sub>H<sub>10</sub>: one a straight chain and
-one with a branch.</p>
-<p>Straight chain: ________________________ &nbsp; With a branch: ________________________</p>
-<p>The formula is the same. Why does the kit give them different names?<br>
-______________________________________________________________________________</p>
+<h2><span class="n">3</span>Same formula, different molecule</h2>
+<p>Build two different molecules that are both C<sub>4</sub>H<sub>10</sub>: one a straight chain and one with a branch.</p>
+<p>Straight chain: <span class="inline wide"></span> &nbsp; With a branch: <span class="inline wide"></span></p>
+<p>The formula is the same. Why does the kit give them different names?</p>
+<div class="line"></div>
 
-<h2>4. Double bonds</h2>
-<p>Put down a carbon and plug a second carbon into it. Click <b>Link</b> and drag from one carbon to
-the other to add a second link. Click <b>Build</b>, then <b>Fill with H</b>.</p>
-<p>Name: ________________________ &nbsp; Formula: ____________</p>
-<p>Build ethane again (two carbons, one link). Drag its link to twist it. Then try the same with
-your double bond. What is different?<br>
-______________________________________________________________________________</p>
+<h2><span class="n">4</span>Double bonds</h2>
+<p>Put down a carbon and plug a second carbon into it. Click <b>Link</b> and drag from one carbon to the other to add
+  a second link. Click <b>Build</b>, then <b>Fill with H</b>.</p>
+<p>Name: <span class="inline wide"></span> &nbsp; Formula: <span class="inline"></span></p>
+<p>Drag the link in ethane (two carbons, one link) to twist it. Now try your double bond. What is different?</p>
+<div class="line"></div>
 
-<h2>Challenge</h2>
-<p>Build carbon dioxide, CO<sub>2</sub>, so that every hole is filled. How many links join each oxygen
-to the carbon? ____________</p>
+<div class="challenge"><b>Challenge:</b> build carbon dioxide, CO<sub>2</sub>, so that every hole is filled. How many
+  links join each oxygen to the carbon? <span class="inline" style="width: 20mm"></span></div>
 
-<p class="small">Made with molecules.fyi, a free 3D ball-and-stick model kit for school chemistry.</p>
+<footer>molecules.fyi is a free 3D ball-and-stick model kit for school chemistry. Teacher notes: molecules.fyi/teachers.html</footer>
 
-<h2>Answers for teachers</h2>
-<p><b>1.</b> Hydrogen 1 hole. Oxygen 2 holes: water, H<sub>2</sub>O. Nitrogen 3 holes: ammonia,
-NH<sub>3</sub>. Carbon 4 holes: methane, CH<sub>4</sub>. Oxygen has only two holes, so it can make
-only two bonds.</p>
-<p><b>2.</b> 1: methane, CH<sub>4</sub>. 2: ethane, C<sub>2</sub>H<sub>6</sub>. 3: propane,
-C<sub>3</sub>H<sub>8</sub>. 4: butane, C<sub>4</sub>H<sub>10</sub>. 5: pentane,
-C<sub>5</sub>H<sub>12</sub>. A chain of <i>n</i> carbons has 2<i>n</i> + 2 hydrogens. 10 carbons:
-C<sub>10</sub>H<sub>22</sub> (decane).</p>
-<p><b>3.</b> Butane and isobutane (its IUPAC name, 2-methylpropane, shows under it). The atoms are
-joined in a different order, so they are different substances: butane boils at about &minus;1&nbsp;&deg;C
-and isobutane at about &minus;12&nbsp;&deg;C.</p>
-<p><b>4.</b> Ethylene, C<sub>2</sub>H<sub>4</sub> (the kit shows its IUPAC name, ethene, under it). The
-single bond in ethane twists. The double bond won't, and the kit says "Double and triple bonds can't
-twist".</p>
-<p><b>Challenge.</b> Two links each: two double bonds, O=C=O.</p>
+<section class="answers">
+  <h1>Answers for teachers</h1>
+  <p><b>1.</b> Hydrogen 1 hole. Oxygen 2 holes: water, H<sub>2</sub>O. Nitrogen 3 holes: ammonia, NH<sub>3</sub>.
+    Carbon 4 holes: methane, CH<sub>4</sub>. Oxygen has only two holes, so it can make only two bonds.</p>
+  <p><b>2.</b> 1: methane, CH<sub>4</sub>. 2: ethane, C<sub>2</sub>H<sub>6</sub>. 3: propane, C<sub>3</sub>H<sub>8</sub>.
+    4: butane, C<sub>4</sub>H<sub>10</sub>. 5: pentane, C<sub>5</sub>H<sub>12</sub>. A chain of <i>n</i> carbons has
+    2<i>n</i> + 2 hydrogens. 10 carbons: C<sub>10</sub>H<sub>22</sub> (decane).</p>
+  <p><b>3.</b> Butane and isobutane (its IUPAC name, 2-methylpropane, shows under it). The atoms are joined in a
+    different order, so they are different substances: butane boils at about &minus;1&nbsp;&deg;C and isobutane at
+    about &minus;12&nbsp;&deg;C.</p>
+  <p><b>4.</b> Ethylene, C<sub>2</sub>H<sub>4</sub> (the kit shows its IUPAC name, ethene, under it). The single bond in
+    ethane twists. The double bond won't, and the kit says &ldquo;Double and triple bonds can't twist&rdquo;.</p>
+  <p><b>Challenge.</b> Two links each: two double bonds, O=C=O.</p>
+</section>
 
 </body>
 </html>
