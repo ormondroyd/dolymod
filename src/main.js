@@ -359,8 +359,8 @@ function loadExample(example) {
     if (example.tree || example.fill) fillHoles();
     labelled = example.label ? { label: example.label, structure: structure() } : null;
   });
-  // Show it face on.
-  camera.position.copy(controls.target).add(Z);
+  // Show it face on, or from the example's own angle.
+  camera.position.copy(controls.target).add(example.view ? new THREE.Vector3(...example.view).normalize() : Z);
   fitView();
 }
 
@@ -477,6 +477,40 @@ const SPHERE = new THREE.SphereGeometry(1, 48, 32);
 const HOLE_HOVER = new THREE.MeshBasicMaterial({ color: 0xffb000, side: THREE.DoubleSide });
 const BLUE = 0x2f6bff;
 const RED = 0xff3b30;
+const DOT = new THREE.SphereGeometry(0.035, 8, 6);
+const DOT_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x6fa8ff });
+
+// Hydrogen bonds: a hydrogen on an oxygen, nitrogen or fluorine pointing
+// at another of those, in a different molecule, at hydrogen-bond distance
+// (about twice the hydrogen's own link). They hold ice together. Returns
+// the two ends of each, at the surfaces of the balls.
+function hydrogenBonds() {
+  const strong = el => el === 'O' || el === 'N' || el === 'F';
+  const piece = new Map();
+  for (const atom of model.atoms) {
+    if (piece.has(atom.id)) continue;
+    for (const id of pieceOf(atom.id)) piece.set(id, atom.id);
+  }
+  const ends = [];
+  for (const h of model.atoms) {
+    const [bond] = bondsOf(h.id);
+    if (kindOf(h).el !== 'H' || !bond) continue;
+    const donor = atomById(bond.a === h.id ? bond.b : bond.a);
+    if (!strong(kindOf(donor).el)) continue;
+    const pointing = posOf(h).sub(posOf(donor)).normalize();
+    for (const other of model.atoms) {
+      if (!strong(kindOf(other).el) || piece.get(other.id) === piece.get(h.id)) continue;
+      const gap = posOf(other).sub(posOf(h));
+      const distance = gap.length();
+      if (distance < 1.6 || distance > 2.9 || gap.normalize().dot(pointing) < 0.7) continue;
+      ends.push([
+        posOf(h).addScaledVector(gap, radiusOf(h.kind)),
+        posOf(other).addScaledVector(gap, -radiusOf(other.kind)),
+      ]);
+    }
+  }
+  return ends;
+}
 
 const makeHalo = () => {
   const halo = new THREE.Mesh(SPHERE, new THREE.MeshBasicMaterial({ side: THREE.BackSide }));
@@ -605,6 +639,17 @@ function rebuild() {
     mesh.userData = { type: 'bond', id: bond.id };
     root.add(mesh);
     view.bonds.set(bond.id, material);
+  }
+
+  for (const [from, to] of hydrogenBonds()) {
+    const gap = to.clone().sub(from);
+    const dots = Math.max(2, Math.round(gap.length() / 0.22));
+    for (let k = 1; k < dots; k++) {
+      const dot = new THREE.Mesh(DOT, DOT_MATERIAL);
+      dot.position.copy(from).addScaledVector(gap, k / dots);
+      dot.raycast = () => {};
+      root.add(dot);
+    }
   }
 
   if (linkFrom !== null && !atomById(linkFrom)) linkFrom = null;
@@ -1048,6 +1093,9 @@ function refreshHint() {
 function refreshReadout() {
   const counts = {};
   for (const a of model.atoms) counts[kindOf(a).el] = (counts[kindOf(a).el] || 0) + 1;
+  // Many copies of one molecule (ice is all waters) read as 21 × H2O.
+  const copies = sameMolecules();
+  if (copies > 1) for (const el in counts) counts[el] /= copies;
   let order;
   if (isSalt()) {
     // A crystal is written as its simplest ratio, sodium first: NaCl.
@@ -1068,7 +1116,7 @@ function refreshReadout() {
     order = Object.keys(counts).sort((x, y) => sequence.indexOf(x) - sequence.indexOf(y));
   }
   $('formula').innerHTML = order.length
-    ? order.map(el => el + (counts[el] > 1 ? `<sub>${counts[el]}</sub>` : '')).join('')
+    ? (copies > 1 ? `${copies} × ` : '') + order.map(el => el + (counts[el] > 1 ? `<sub>${counts[el]}</sub>` : '')).join('')
     : '&mdash;';
   const mass = model.atoms.reduce((m, a) => m + ELEMENTS[kindOf(a).el].mass, 0);
   const open = model.atoms.reduce((n, a) => n + freeHoles(a).length, 0);
@@ -1084,6 +1132,20 @@ function refreshReadout() {
 let namedSmiles = null;
 let namedLabel = null;
 let nameTimer;
+
+// How many separate molecules the model is, if they are all the same formula
+// (and there is more than one); otherwise 1.
+function sameMolecules() {
+  const seen = new Set();
+  const formulas = [];
+  for (const atom of model.atoms) {
+    if (seen.has(atom.id)) continue;
+    const piece = [...pieceOf(atom.id)];
+    piece.forEach(id => seen.add(id));
+    formulas.push(piece.map(id => kindOf(atomById(id)).el).sort().join());
+  }
+  return formulas.length > 1 && formulas.every(f => f === formulas[0]) ? formulas.length : 1;
+}
 
 // A model made only of salt-crystal atoms, with both sodium and chloride in it.
 function isSalt() {

@@ -33,14 +33,19 @@ work, because browsers block ES modules on `file://`.)
 - **Delete**: click an atom or a link. Deleting an atom also removes the hydrogens on it;
   deleting one link of a double bond leaves a single bond.
 - **Fill with H** puts a hydrogen in every free hole.
-- **Examples**: load one of 56 ready-made models, in ten groups: gases, everyday
+- **Examples**: load one of 61 ready-made models, in ten groups: gases, everyday
   chemicals (water to indigo), food and flavours (caffeine, chocolate's theobromine,
   vanillin, chilli, mint, oranges, sugar, lemons), medicines (aspirin, paracetamol,
   ibuprofen), body chemicals (dopamine, serotonin, adrenaline), acids, poisons
   (nicotine, pufferfish tetrodotoxin, hydrogen cyanide), rings, weird and wonderful
   (cubane, tetrahedrane, propellane, dodecahedrane and more), and crystals and cages
-  (salt, diamond, the buckyball). Loading one turns the view to face it; Undo takes you
-  back to what you had.
+  (cubic salt and diamond; hexagonal diamond, graphite, boron nitride, ice and silica;
+  the buckyball). Loading one turns the view to face it; Undo takes you back to what
+  you had.
+- **Hydrogen bonds**: a hydrogen on an oxygen, nitrogen or fluorine that points at one
+  of those in another molecule, at the right distance, shows a dotted line. They are
+  what hold ice together. A model of several copies of one molecule shows its formula
+  as, say, 21 × H₂O.
 - **Saving**: your model is kept in the browser as you build, so it comes back after a
   refresh. **Save** downloads it as a `.dolymod.json` file and **Load** opens one.
 - **Naming**: once every hole is filled, the panel names the molecule. The model is

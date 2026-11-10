@@ -22,11 +22,6 @@
       <h1>Dolymod</h1>
       <span class="tag">molecular model kit</span>
     </div>
-    <nav class="tools" aria-label="Tools">
-      <button data-tool="add">Build</button>
-      <button data-tool="link">Link</button>
-      <button data-tool="delete">Delete</button>
-    </nav>
     <div class="actions">
       <select id="examples" aria-label="Load an example">
         <option value="" disabled selected>Examples…</option>
@@ -46,6 +41,11 @@
     </aside>
     <section class="stage">
       <canvas id="scene"></canvas>
+      <nav class="tools" aria-label="Tools">
+        <button data-tool="add">Build</button>
+        <button data-tool="link">Link</button>
+        <button data-tool="delete">Delete</button>
+      </nav>
       <p id="hint" class="hint"></p>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
       <div class="zoom" role="group" aria-label="Zoom">

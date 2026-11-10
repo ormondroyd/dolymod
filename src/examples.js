@@ -8,7 +8,8 @@
 // Bigger shapes `build` a list of atom positions and links (a pair of atom
 // indexes per link, listed twice for a double bond); the kit then turns each
 // ball so its holes face its links, and fills the rest with H if `fill` is set.
-// `label` names a model PubChem can't, such as a piece of crystal. Molecules
+// `label` names a model PubChem can't, such as a piece of crystal, and `view`
+// is the direction to look from when it loads (face on by default). Molecules
 // with rings are written as SMILES (from PubChem) and laid out by layout.js.
 import * as THREE from 'three';
 import { fromSmiles } from './layout.js';
@@ -78,8 +79,13 @@ export const EXAMPLES = [
   { group: 'Weird and wonderful', name: 'Sulfur hexafluoride', tree: ['S6', 'F', 'F', 'F', 'F', 'F', 'F'] },
   { group: 'Weird and wonderful', name: 'Phosphorus pentachloride', tree: ['P5', 'Cl', 'Cl', 'Cl', 'Cl', 'Cl'] },
 
-  { group: 'Crystals and cages', name: 'Salt crystal', build: salt },
-  { group: 'Crystals and cages', name: 'Diamond chunk', build: cage(diamond()), label: 'Diamond (a chunk of the crystal)' },
+  { group: 'Crystals and cages', name: 'Salt crystal (cubic)', build: salt },
+  { group: 'Crystals and cages', name: 'Diamond chunk (cubic)', build: cage(diamond()), label: 'Diamond (a chunk of the crystal)' },
+  { group: 'Crystals and cages', name: 'Hexagonal diamond (from meteorites)', build: lonsdaleite, label: 'Hexagonal diamond (lonsdaleite)' },
+  { group: 'Crystals and cages', name: 'Graphite (pencil lead, layers)', build: graphite, label: 'Graphite (three layers)', view: [0, -1, 0.5] },
+  { group: 'Crystals and cages', name: 'Boron nitride (white graphite)', build: boronNitride, label: 'Boron nitride (two layers)', view: [0, -1, 0.5] },
+  { group: 'Crystals and cages', name: 'Ice (hexagonal, like snowflakes)', build: ice, label: 'Ice (water molecules held by hydrogen bonds)' },
+  { group: 'Crystals and cages', name: 'Silica (sand and glass)', build: silica, label: 'Silica, SiO₂ (tridymite crystal)' },
   { group: 'Crystals and cages', name: 'Buckyball (C₆₀)', build: buckyball },
 ];
 
@@ -188,6 +194,124 @@ function benzene(length) {
     links.push([k, (k + 1) % 6], [k, 6 + k]);
     if (k % 2 === 0) links.push([k, (k + 1) % 6]);
   }
+  return { atoms, links };
+}
+
+// ---- Non-cubic crystals ----
+
+// Link every pair of atoms that sits one kit link apart.
+function connect(atoms, length) {
+  const links = [];
+  atoms.forEach((a, i) => atoms.forEach((b, j) => {
+    if (j > i && Math.abs(a.p.distanceTo(b.p) - length(a.kind, b.kind)) < 0.05) links.push([i, j]);
+  }));
+  return { atoms, links };
+}
+
+// Wurtzite: the hexagonal cousin of the diamond lattice. Every site has four
+// neighbours `bond` apart, at the tetrahedral angle. Returns the sites within
+// `radius` of the middle, each with the directions to all four neighbours
+// (including any cut off at the edge).
+function wurtzite(bond, radius) {
+  const a = bond * Math.sqrt(8 / 3);
+  const c = a * Math.sqrt(8 / 3);
+  const cell = (f1, f2, f3) => new THREE.Vector3(a * f1 - (a / 2) * f2, ((a * Math.sqrt(3)) / 2) * f2, c * f3);
+  const sites = [];
+  for (let i = -4; i <= 4; i++) {
+    for (let j = -4; j <= 4; j++) {
+      for (let k = -3; k <= 3; k++) {
+        for (const [f1, f2, f3] of [[0, 0, 0], [1 / 3, 2 / 3, 1 / 2], [0, 0, 3 / 8], [1 / 3, 2 / 3, 7 / 8]]) {
+          sites.push(cell(i + f1, j + f2, k + f3 - 7 / 16));
+        }
+      }
+    }
+  }
+  return sites
+    .filter(p => p.length() < radius)
+    .map(p => ({
+      p,
+      out: sites.filter(q => Math.abs(q.distanceTo(p) - bond) < 1e-6).map(q => q.clone().sub(p).normalize()),
+    }));
+}
+
+// Honeycomb sheets, `layers` of them `gap` apart, each shifted by one bond
+// from the one below (or, with `swap`, stacked with the two kinds swapped).
+function honeycomb(bond, radius, layers, gap, kinds, swap = false) {
+  const a1 = new THREE.Vector3(Math.sqrt(3) * bond, 0, 0);
+  const a2 = new THREE.Vector3((Math.sqrt(3) / 2) * bond, 1.5 * bond, 0);
+  const atoms = [];
+  for (let layer = 0; layer < layers; layer++) {
+    const z = (layer - (layers - 1) / 2) * gap;
+    const shift = swap ? 0 : layer % 2;
+    for (let i = -6; i <= 6; i++) {
+      for (let j = -6; j <= 6; j++) {
+        [0, 1].forEach(b => {
+          const p = a1.clone().multiplyScalar(i).addScaledVector(a2, j).add(new THREE.Vector3(0, (b + shift) * bond - bond / 2, z));
+          if (Math.hypot(p.x, p.y) < radius) atoms.push({ kind: kinds[swap ? (b + layer) % 2 : b], p });
+        });
+      }
+    }
+  }
+  return atoms;
+}
+
+function lonsdaleite(length) {
+  const bond = length('C', 'C');
+  return connect(wurtzite(bond, 2.3 * bond).map(({ p }) => ({ kind: 'C', p })), length);
+}
+
+// Graphite: carbon sheets. Each carbon links to three others in its sheet;
+// its fourth hole stays free, and the sheets slide over each other.
+function graphite(length) {
+  const bond = length('C', 'C');
+  return connect(honeycomb(bond, 2.6 * bond, 3, 2.36 * bond, ['C', 'C']), length);
+}
+
+function boronNitride(length) {
+  const bond = length('B', 'N');
+  return connect(honeycomb(bond, 2.6 * bond, 2, 2.3 * bond, ['B', 'N'], true), length);
+}
+
+// Silica (tridymite): silicon atoms on the wurtzite lattice, each joined to
+// four others through an oxygen.
+function silica(length) {
+  const reach = length('Si', 'O');
+  const silicons = wurtzite(2 * reach, 4.6 * reach).map(({ p }) => ({ kind: 'Si', p }));
+  const oxygens = [];
+  silicons.forEach((a, i) => silicons.forEach((b, j) => {
+    if (j > i && Math.abs(a.p.distanceTo(b.p) - 2 * reach) < 1e-6) {
+      oxygens.push({ kind: 'O', p: a.p.clone().add(b.p).multiplyScalar(0.5) });
+    }
+  }));
+  return connect([...silicons, ...oxygens], length);
+}
+
+// Ice: each oxygen sits on the wurtzite lattice with its two hydrogens
+// pointing at two of its four neighbours. No oxygen takes more than two
+// hydrogens from its neighbours, so every water keeps two of its own; at the
+// edge they may point outwards. The hydrogen bonds themselves aren't links:
+// the kit draws them as dots.
+function ice(length) {
+  const oh = length('O', 'H');
+  const spacing = oh * (2.76 / 0.96); // O...O over O-H, in real ice
+  const waters = wurtzite(spacing, 1.9 * spacing);
+  const neighbour = (i, d) => waters.findIndex(w => w.p.distanceTo(waters[i].p.clone().addScaledVector(d, spacing)) < 1e-6);
+  const taken = new Set();
+  const received = waters.map(() => 0);
+  const atoms = waters.map(({ p }) => ({ kind: 'O', p }));
+  const links = [];
+  waters.forEach(({ p, out }, i) => {
+    const options = out.map(d => ({ d, j: neighbour(i, d) })).filter(({ j }) => !taken.has(`${i}-${j}`));
+    const rank = ({ j }) => (j < 0 ? 1 : received[j] < 2 ? 0 : 2);
+    options.sort((x, y) => rank(x) - rank(y));
+    for (const { d, j } of options.slice(0, 2)) {
+      if (j >= 0) {
+        taken.add(`${i}-${j}`).add(`${j}-${i}`);
+        received[j]++;
+      }
+      links.push([i, atoms.push({ kind: 'H', p: p.clone().addScaledVector(d, oh) }) - 1]);
+    }
+  });
   return { atoms, links };
 }
 
