@@ -1,13 +1,13 @@
 <!doctype html>
 <!--
   The 1200 x 630 picture shown when molecules.fyi is shared (social.png).
-  It frames the kit itself, showing the salt crystal example, beside the
-  name. To remake it, serve the repo and run from its root:
+  It puts the serotonin picture (icon-source.png) beside the name. To remake
+  it, serve the repo and run from its root:
 
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
     --user-data-dir="$(mktemp -d)" --hide-scrollbars --window-size=1200,720 \
-    --force-device-scale-factor=1 --use-angle=swiftshader --enable-unsafe-swiftshader \
-    --virtual-time-budget=15000 --screenshot=social-raw.png http://localhost:8643/tools/social-card.html
+    --force-device-scale-factor=1 --virtual-time-budget=5000 \
+    --screenshot=social-raw.png http://localhost:8643/tools/social-card.html
 
   Headless Chrome's page is shorter than its window, so the window is taller
   than the picture. Crop the top 1200 x 630 into social.png.
@@ -23,23 +23,34 @@
       height: 630px;
       overflow: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      color: #e7ebf0;
-      background: radial-gradient(ellipse at 72% 50%, #323a46, #14171c 70%);
+      color: #1e232a;
+      /* Matches the picture's own background, top to bottom. */
+      background: linear-gradient(#eaecf1, #e1e4ea);
     }
     .text {
       position: absolute;
       left: 72px;
       top: 0;
       bottom: 0;
-      width: 520px;
+      width: 500px;
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
     h1 { margin: 0; font-size: 80px; letter-spacing: -0.02em; }
-    .lead { margin: 14px 0 28px; font-size: 42px; font-weight: 600; color: #cdd6e0; }
-    .small { font-size: 26px; line-height: 1.4; color: #9ba6b3; }
-    iframe { position: absolute; right: 0; top: 0; width: 660px; height: 630px; border: 0; }
+    .lead { margin: 14px 0 28px; font-size: 42px; font-weight: 600; color: #333b46; }
+    .small { font-size: 26px; line-height: 1.4; color: #5b6573; }
+    img {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 630px;
+      height: 630px;
+      object-fit: cover;
+      object-position: 38% 50%;
+      -webkit-mask-image: linear-gradient(to right, transparent, black 16px);
+      mask-image: linear-gradient(to right, transparent, black 16px);
+    }
   </style>
 </head>
 <body>
@@ -48,22 +59,6 @@
     <div class="lead">Build molecules in 3D</div>
     <div class="small">A free ball-and-stick model kit<br>for school chemistry, in your browser</div>
   </div>
-  <iframe id="kit" src="../index.html" title="The kit"></iframe>
-  <script>
-    // Show only the 3D view, then load the salt crystal once it has resized.
-    const frame = document.getElementById('kit');
-    frame.addEventListener('load', () => {
-      const page = frame.contentDocument;
-      const style = page.createElement('style');
-      style.textContent = '.bar, .palette, .tools, .hint, .readout, .help, .zoom, .foot, .toast { display: none !important; }'
-        + ' html, body, .stage { background: transparent !important; }';
-      page.head.append(style);
-      setTimeout(() => {
-        const examples = page.getElementById('examples');
-        examples.value = [...examples.options].find(o => o.textContent.startsWith('Salt')).value;
-        examples.dispatchEvent(new Event('change'));
-      }, 500);
-    });
-  </script>
+  <img src="icon-source.png" alt="">
 </body>
 </html>
