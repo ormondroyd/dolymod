@@ -79,7 +79,8 @@ export const EXAMPLES = [
   { group: 'Weird and wonderful', name: 'Sulfur hexafluoride', tree: ['S6', 'F', 'F', 'F', 'F', 'F', 'F'] },
   { group: 'Weird and wonderful', name: 'Phosphorus pentachloride', tree: ['P5', 'Cl', 'Cl', 'Cl', 'Cl', 'Cl'] },
 
-  { group: 'Crystals and cages', name: 'Salt crystal (cubic)', build: salt },
+  { group: 'Crystals and cages', name: 'Salt crystal (cubic)', build: ionLattice('Na', 'Cl6') },
+  { group: 'Crystals and cages', name: 'Magnesium oxide crystal (cubic)', build: ionLattice('Mg', 'O6') },
   { group: 'Crystals and cages', name: 'Diamond chunk (cubic)', build: cage(diamond()), label: 'Diamond (a chunk of the crystal)' },
   { group: 'Crystals and cages', name: 'Hexagonal diamond (from meteorites)', build: lonsdaleite, label: 'Hexagonal diamond (lonsdaleite)' },
   { group: 'Crystals and cages', name: 'Graphite (pencil lead, layers)', build: graphite, label: 'Graphite (three layers)', view: [0, -1, 0.5] },
@@ -315,26 +316,29 @@ function ice(length) {
   return { atoms, links };
 }
 
-// A 4 x 4 x 4 cube of alternating sodium and chloride: 32 of each.
-function salt(length) {
-  const n = 4;
-  const step = length('Na', 'Cl6');
-  const middle = ((n - 1) * step) / 2;
-  const index = (x, y, z) => (x * n + y) * n + z;
-  const atoms = [];
-  const links = [];
-  for (let x = 0; x < n; x++) {
-    for (let y = 0; y < n; y++) {
-      for (let z = 0; z < n; z++) {
-        const p = new THREE.Vector3(x, y, z).multiplyScalar(step).subScalar(middle);
-        atoms[index(x, y, z)] = { kind: (x + y + z) % 2 ? 'Cl6' : 'Na', p };
-        if (x + 1 < n) links.push([index(x, y, z), index(x + 1, y, z)]);
-        if (y + 1 < n) links.push([index(x, y, z), index(x, y + 1, z)]);
-        if (z + 1 < n) links.push([index(x, y, z), index(x, y, z + 1)]);
+// A 4 x 4 x 4 cube of alternating positive and negative ions: 32 of each, as
+// in sodium chloride or magnesium oxide.
+function ionLattice(cation, anion) {
+  return length => {
+    const n = 4;
+    const step = length(cation, anion);
+    const middle = ((n - 1) * step) / 2;
+    const index = (x, y, z) => (x * n + y) * n + z;
+    const atoms = [];
+    const links = [];
+    for (let x = 0; x < n; x++) {
+      for (let y = 0; y < n; y++) {
+        for (let z = 0; z < n; z++) {
+          const p = new THREE.Vector3(x, y, z).multiplyScalar(step).subScalar(middle);
+          atoms[index(x, y, z)] = { kind: (x + y + z) % 2 ? anion : cation, p };
+          if (x + 1 < n) links.push([index(x, y, z), index(x + 1, y, z)]);
+          if (y + 1 < n) links.push([index(x, y, z), index(x, y + 1, z)]);
+          if (z + 1 < n) links.push([index(x, y, z), index(x, y, z + 1)]);
+        }
       }
     }
-  }
-  return { atoms, links };
+    return { atoms, links };
+  };
 }
 
 // Buckminsterfullerene: 60 carbons at the corners of a truncated icosahedron

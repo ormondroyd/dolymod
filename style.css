@@ -143,7 +143,7 @@ main { flex: 1; display: flex; min-height: 0; }
   text-transform: uppercase;
   color: var(--muted);
 }
-.chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .chip {
   display: grid;
   grid-template-columns: 30px 1fr;

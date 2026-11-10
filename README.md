@@ -63,22 +63,23 @@ work, because browsers block ES modules on `file://`.)
 
 ## The parts box
 
-Every ball has one hole for each bond it makes, as in the real kit. The box has three
+Every ball has one hole for each bond it makes, as in the real kit. The box has two
 sections:
 
 | Section | Atom | Holes |
 | --- | --- | --- |
-| Atoms | Carbon, silicon | 4 |
+| Atoms | Sulfur (for SF₆ and sulfuric acid) | 6 |
+| | Phosphorus (for PCl₅) | 5 |
+| | Carbon, silicon | 4 |
 | | Nitrogen, phosphorus, boron | 3 |
 | | Oxygen, sulfur | 2 |
 | | Hydrogen, fluorine, chlorine, bromine, iodine | 1 |
-| More holes | Sulfur | 6 |
-| | Phosphorus | 5 |
-| Salt crystal | Sodium, chloride | 6, set square |
+| Ions | Li⁺, Na⁺, K⁺, Mg²⁺, Ca²⁺, F⁻, Cl⁻, Br⁻, O²⁻ | 6, set square |
 
-Salt-crystal atoms line up square so they build a sodium chloride lattice. A model made
-only of them is named as a salt crystal, with its formula as the simplest ratio (NaCl),
-and Fill with H leaves them alone.
+Ions line up square, so they build ionic lattices. A model of one positive and one
+negative ion is named from them ("Magnesium oxide crystal") with its formula from their
+charges (MgO). A pair that doesn't balance one-to-one, such as Mg²⁺ with Cl⁻, gets a note
+instead: real magnesium chloride is MgCl₂. Fill with H leaves ions alone.
 
 A double bond is two flexible links between the same two atoms, each in its own hole,
 and a triple bond is three. The atoms turn so the links bend evenly side by side.

@@ -149,7 +149,7 @@ const angleGap = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))
 
 // How far to spin a new atom about its bond: as far from clashing with the
 // parent's other holes as it will go, which gives the staggered conformation.
-// Salt-crystal atoms instead line their holes up square, to build a lattice.
+// Ions instead line their holes up square, to build a lattice.
 function twistAngle(parent, hole, kind, q1, axis) {
   const parentDirs = kindOf(parent).holes
     .filter((_, i) => i !== hole)
@@ -157,7 +157,7 @@ function twistAngle(parent, hole, kind, q1, axis) {
   const alphas = anglesAround(parentDirs, axis);
   const betas = anglesAround(kind.holes.slice(1).map(d => d.clone().applyQuaternion(q1)), axis);
   if (!alphas.length || !betas.length) return 0;
-  if (kindOf(parent).crystal && kind.crystal) return alphas[0] - betas[0];
+  if (kindOf(parent).ion && kind.ion) return alphas[0] - betas[0];
   let best = 0;
   let bestGap = -1;
   for (let deg = 0; deg < 360; deg++) {
@@ -266,7 +266,7 @@ function pairUp(fixed, moving) {
 
 function fillHoles() {
   for (const atom of [...model.atoms]) {
-    if (kindOf(atom).el === 'H' || kindOf(atom).crystal) continue;
+    if (kindOf(atom).el === 'H' || kindOf(atom).ion) continue;
     for (const h of freeHoles(atom)) {
       const spot = placement(atom, h, 'H');
       if (!spot.blocked) addBond(atom, h, addAtom('H', spot.p, spot.q), 0);
@@ -276,8 +276,8 @@ function fillHoles() {
 
 function fillHydrogens() {
   if (change(fillHoles)) return;
-  const salty = model.atoms.some(a => kindOf(a).crystal && freeHoles(a).length);
-  flash(salty ? "Salt crystal atoms don't take hydrogen" : 'No free holes to fill');
+  const ions = model.atoms.some(a => kindOf(a).ion && freeHoles(a).length);
+  flash(ions ? "Ions don't take hydrogen" : 'No free holes to fill');
 }
 
 // ---- Saving -----------------------------------------------------------------
@@ -1167,13 +1167,14 @@ function refreshReadout() {
   const copies = sameMolecules();
   if (copies > 1) for (const el in counts) counts[el] /= copies;
   let order;
-  if (isSalt()) {
-    // A crystal is written as its simplest ratio, sodium first: NaCl.
-    const gcd = (x, y) => (y ? gcd(y, x % y) : x);
-    const g = gcd(counts.Na, counts.Cl);
-    counts.Na /= g;
-    counts.Cl /= g;
-    order = ['Na', 'Cl'];
+  const lattice = ionicLattice();
+  if (lattice) {
+    // An ionic lattice is written from its ions' charges, positive ion first:
+    // NaCl, MgO, and MgCl2 for magnesium chloride.
+    const { cation, anion, cations, anions } = lattice;
+    order = [cation.el, anion.el];
+    counts[cation.el] = cations;
+    counts[anion.el] = anions;
   } else if (counts.C) {
     // Hill order: carbon, then hydrogen, then the rest alphabetically.
     const rest = Object.keys(counts).filter(el => el !== 'C' && el !== 'H').sort();
@@ -1181,7 +1182,7 @@ function refreshReadout() {
   } else {
     // Without carbon, IUPAC's element sequence gives the familiar NH3, H2O, HCl;
     // acids with oxygen put their hydrogen first, as in H2SO4 and H3PO4.
-    const sequence = ['Na', 'B', 'Si', 'P', 'N', 'H', 'S', 'I', 'Br', 'Cl', 'O', 'F'];
+    const sequence = ['Li', 'Na', 'K', 'Mg', 'Ca', 'B', 'Si', 'P', 'N', 'H', 'S', 'I', 'Br', 'Cl', 'O', 'F'];
     if (counts.H && counts.O) sequence.unshift('H');
     order = Object.keys(counts).sort((x, y) => sequence.indexOf(x) - sequence.indexOf(y));
   }
@@ -1217,20 +1218,34 @@ function sameMolecules() {
   return formulas.length > 1 && formulas.every(f => f === formulas[0]) ? formulas.length : 1;
 }
 
-// A model made only of salt-crystal atoms, with both sodium and chloride in it.
-function isSalt() {
-  const kinds = model.atoms.map(kindOf);
-  return kinds.length > 0 && kinds.every(k => k.crystal) && kinds.some(k => k.el === 'Na') && kinds.some(k => k.el === 'Cl');
+// A model made only of ions, one positive kind and one negative: an ionic
+// lattice. Returns the two kinds of ion, how many of each the compound has
+// (from their charges: MgCl2 is one Mg2+ to two Cl-), and its name.
+function ionicLattice() {
+  const kinds = [...new Set(model.atoms.map(a => a.kind))].map(id => KIND[id]);
+  if (!kinds.length || !kinds.every(k => k.ion)) return null;
+  const cation = kinds.filter(k => k.charge > 0);
+  const anion = kinds.filter(k => k.charge < 0);
+  if (cation.length !== 1 || anion.length !== 1) return null;
+  const gcd = (x, y) => (y ? gcd(y, x % y) : x);
+  const plus = cation[0].charge;
+  const minus = -anion[0].charge;
+  const name = `${ELEMENTS[cation[0].el].name} ${anion[0].name.replace(' ion', '').toLowerCase()}`;
+  return { cation: cation[0], anion: anion[0], cations: minus / gcd(plus, minus), anions: plus / gcd(plus, minus), name };
 }
 
 function refreshName(open) {
   // A loaded example's own name wins while it is as loaded; PubChem's details
   // still show underneath when PubChem knows it.
   const label = labelled?.structure === structure() ? labelled.label : null;
-  if (isSalt()) {
+  const lattice = ionicLattice();
+  if (lattice) {
     clearTimeout(nameTimer);
     namedSmiles = null;
-    return showName('Sodium chloride (salt) crystal');
+    if (lattice.cations === lattice.anions) return showName(`${lattice.name} crystal`);
+    const ions = (n, kind) => `${n === 1 ? 'one' : 'two'} ${kind.name.toLowerCase()}${n === 1 ? '' : 's'}`;
+    return showName(`Real ${lattice.name.toLowerCase()} has ${ions(lattice.cations, lattice.cation)} for every `
+      + `${ions(lattice.anions, lattice.anion)}, so it doesn't make a square lattice like this`, { status: true });
   }
   const result = !model.atoms.length ? { problem: '' }
     : open ? { problem: 'Fill the open holes to name it' }
@@ -1331,7 +1346,9 @@ for (const kind of KINDS) {
   chip.title = `${nameOf(kind)}, ${holesText(n)}`;
   chip.innerHTML =
     `<span class="ball" style="--c:${el.color}" data-n="${n}"></span>` +
-    `<span class="sym">${kind.el} <span class="el-name">${nameOf(kind)}</span></span><span class="geo">${holesText(n)}</span>`;
+    (kind.ion
+      ? `<span class="sym">${kind.symbol}</span><span class="geo">${nameOf(kind).replace(/ ion$/, '')}</span>`
+      : `<span class="sym">${kind.el} <span class="el-name">${nameOf(kind)}</span></span><span class="geo">${holesText(n)}</span>`);
   chip.addEventListener('click', () => {
     kindId = kind.id;
     setTool('add');
