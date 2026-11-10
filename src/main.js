@@ -1,4 +1,4 @@
-// Dolymod: a point-and-click ball-and-stick model kit.
+// molecules.fyi: a point-and-click ball-and-stick model kit.
 // The model is plain data (atoms with a position and orientation, bonds
 // between numbered holes); every change rebuilds the 3D scene from it.
 import * as THREE from 'three';
@@ -284,7 +284,8 @@ function fillHydrogens() {
 // The model is kept in this browser as you build, so a refresh brings it back.
 // Save writes it to a file and Load opens one.
 
-const STORE = 'dolymod-model';
+const STORE = 'molecules-model';
+const OLD_STORE = 'dolymod-model'; // the kit's name before molecules.fyi
 let saveTimer;
 
 function autosave() {
@@ -333,7 +334,7 @@ async function saveFile() {
   if (!model.atoms.length) return flash('Build something first');
   const slug = modelName().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'molecule';
   const name = `${slug}.json`;
-  const text = JSON.stringify({ app: 'dolymod', version: 1, model });
+  const text = JSON.stringify({ app: 'molecules.fyi', version: 1, model });
   if ('showSaveFilePicker' in window) {
     try {
       const handle = await window.showSaveFilePicker({
@@ -364,7 +365,7 @@ async function openFile(file) {
   } catch {
     // Not JSON: handled below.
   }
-  if (!opened) return flash("That file isn't a Dolymod model");
+  if (!opened) return flash("That file isn't a saved model");
   change(() => { model = opened; });
   fitView();
 }
@@ -1412,8 +1413,21 @@ $('open-file').addEventListener('change', e => {
   e.target.value = '';
 });
 
+// When the site was last deployed: the newest time any of its files changed
+// on the server. Each deploy is a fresh copy, so this needs no build step.
+async function showUpdated() {
+  const files = ['index.html', 'teachers.html', 'style.css', 'src/main.js', 'src/kit.js', 'src/naming.js', 'src/examples.js', 'src/layout.js'];
+  const times = await Promise.all(files.map(file => fetch(file, { method: 'HEAD', cache: 'no-store' })
+    .then(response => Date.parse(response.headers.get('Last-Modified')), () => NaN)));
+  const latest = Math.max(...times.filter(Number.isFinite));
+  if (Number.isFinite(latest)) {
+    $('updated').textContent = `Updated ${new Date(latest).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  }
+}
+showUpdated();
+
 try {
-  model = readModel(JSON.parse(localStorage.getItem(STORE))) ?? model;
+  model = readModel(JSON.parse(localStorage.getItem(STORE) ?? localStorage.getItem(OLD_STORE))) ?? model;
 } catch {
   // Nothing saved, or storage switched off: start with an empty table.
 }

@@ -1,4 +1,4 @@
-# Dolymod
+# molecules.fyi
 
 A point-and-click ball-and-stick molecular model kit that runs in the browser.
 It works like the plastic kits used in chemistry classes: each atom is a coloured
