@@ -80,6 +80,14 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 h1, .brand-name { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
 .tag-link { font-size: 13px; color: var(--accent); }
 .updated { font-size: 12px; color: var(--muted); }
+.foot {
+  padding: 4px 16px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.foot a { color: inherit; }
 .button-link {
   display: inline-block;
   padding: 6px 12px;
