@@ -104,7 +104,7 @@ Inspired by physical ball-and-stick kits such as Molymod®. Not affiliated with 
 
 ## Licence
 
-Copyright © 2026 ormondroyd.
+Copyright © 2026 J Stevens-Hall.
 
 molecules.fyi is free software: you can redistribute it and/or modify it under the terms
 of the GNU Affero General Public License, version 3 (see [LICENSE](LICENSE)). If you run
